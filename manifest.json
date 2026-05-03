@@ -1,8 +1,18 @@
 {
   "name": "CEN Bible",
   "short_name": "CEN Bible",
+  "description": "Christian Essential Navigator Bible",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff"
+  "orientation": "portrait",
+  "background_color": "#fffaf2",
+  "theme_color": "#b8946a",
+  "categories": [
+    "books",
+    "education",
+    "lifestyle"
+  ],
+  "lang": "ko-KR",
+  "icons": []
 }
