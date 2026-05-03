@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cen-bible-v1.0.0';
+const CACHE_NAME = 'cen-bible-v1.1.0';
 
 self.addEventListener('install', e => {
   self.skipWaiting();

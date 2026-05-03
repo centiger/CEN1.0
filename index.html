@@ -7,23 +7,33 @@
 <link rel="manifest" href="manifest.json">
 </head>
 <body>
-<h2>CEN Bible 정상 실행 테스트</h2>
+
+<h2>CEN Bible 실행됨 (최종 PWA 구조)</h2>
 
 <div style="position:fixed;bottom:5px;right:10px;font-size:12px;opacity:0.5;">
-v1.0.0
+v1.1.0
 </div>
 
 <script>
+// 뒤로가기 종료
+history.pushState(null, null, location.href);
+window.addEventListener('popstate', function () {
+  if (confirm("앱을 종료하시겠습니까?")) {
+    window.close();
+  } else {
+    history.pushState(null, null, location.href);
+  }
+});
+
+// PWA 업데이트
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./service-worker.js').then(reg => {
 
     reg.onupdatefound = () => {
       const newWorker = reg.installing;
       newWorker.onstatechange = () => {
-        if (newWorker.state === 'installed') {
-          if (navigator.serviceWorker.controller) {
-            location.reload();
-          }
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          location.reload();
         }
       };
     };
