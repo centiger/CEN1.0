@@ -1604,7 +1604,61 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
 
 
 
-<style id="cen-score-viewer-style">
+
+
+
+<style id="cen-hymn-text-score-style">
+#hymnPanel .panel{
+  display:flex;
+  flex-direction:column;
+  max-height:88vh;
+}
+
+#hymnResult.hymnScrollList{
+  margin-top:8px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  max-height:calc(88vh - 145px);
+  padding-right:4px;
+  border-top:1px solid #eee0cc;
+}
+
+#hymnResult.hymnScrollList::-webkit-scrollbar{width:7px;}
+#hymnResult.hymnScrollList::-webkit-scrollbar-thumb{
+  background:rgba(80,60,40,.28);
+  border-radius:999px;
+}
+
+#hymnResult.hymnTextDetail{
+  margin-top:8px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  max-height:calc(88vh - 125px);
+  padding-right:4px;
+}
+
+.hymnDetailTop{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:4px 0 10px;
+  border-bottom:1px solid #eee0cc;
+  margin-bottom:10px;
+}
+
+.hymnDetailTop button{
+  border:1px solid #e0d2bf;
+  border-radius:999px;
+  padding:9px 14px;
+  background:#fff;
+  color:#5b4632;
+  font-weight:900;
+}
+
+.hymnDetailTop .scoreOpenBtn{
+  background:#e5c9a6;
+}
+
 body.scoreViewerOpen{
   overflow:hidden !important;
 }
@@ -1702,12 +1756,8 @@ body.scoreViewerOpen{
 }
 
 @media (orientation:landscape){
-  .scoreViewerHeader{
-    padding-top:8px;
-  }
-  .scoreViewerTitle{
-    font-size:14px;
-  }
+  .scoreViewerHeader{padding-top:8px;}
+  .scoreViewerTitle{font-size:14px;}
 }
 </style>
 
@@ -2389,24 +2439,36 @@ async function openHymnFromSettings() {
   document.getElementById('hymnPanel').style.display='flex'; 
   const input=document.getElementById('hymnInput');
   if(input) input.value='';
-  window.currentHymnViewMode = window.currentHymnViewMode || 'text';
   renderHymns(hymnData.slice(0)); 
 }
+
 function searchHymn() { 
   const q=document.getElementById('hymnInput').value.trim(); 
   const list = q ? hymnData.filter(h=>String(h.number).padStart(3,'0').includes(q)||String(h.number).includes(q)||h.title.includes(q)) : hymnData.slice(0);
   renderHymns(list); 
 }
-function setHymnViewMode(mode){
-  window.currentHymnViewMode = mode;
-  renderHymns(hymnData.slice(0));
-}
+
 function showHymnText(h){
   const r=document.getElementById('hymnResult');
   const no=String(h.number).padStart(3,'0');
+
   r.classList.remove('hymnScrollList');
-  r.innerHTML=`<div class="hymnItem" onclick="renderHymns(hymnData.slice(0))">← 목록</div><h3>${no}. ${h.title}</h3><pre>${escapeHtml(h.lyrics)}</pre>`;
+  r.classList.add('hymnTextDetail');
+
+  r.innerHTML=`
+    <div class="hymnDetailTop">
+      <button type="button" onclick="renderHymns(hymnData.slice(0))">← 목록</button>
+      <button type="button" class="scoreOpenBtn">악보보기</button>
+    </div>
+    <h3>${no}. ${h.title}</h3>
+    <pre>${escapeHtml(h.lyrics)}</pre>
+  `;
+
+  r.querySelector('.scoreOpenBtn').onclick=function(){
+    showHymnScore(h);
+  };
 }
+
 function showHymnScore(h){
   const no=String(h.number).padStart(3,'0');
   const title=h.title || '';
@@ -2421,7 +2483,7 @@ function showHymnScore(h){
   overlay.id='scoreViewerOverlay';
   overlay.innerHTML=`
     <div class="scoreViewerHeader">
-      <button type="button" class="scoreBackBtn">← 목록</button>
+      <button type="button" class="scoreBackBtn">← 찬송가</button>
       <div class="scoreViewerTitle">${no}. ${title}</div>
       <div class="scoreZoomBtns">
         <button type="button" class="scoreZoomOut">－</button>
@@ -2447,7 +2509,6 @@ function showHymnScore(h){
   overlay.querySelector('.scoreBackBtn').onclick=function(){
     overlay.remove();
     document.body.classList.remove('scoreViewerOpen');
-    renderHymns(hymnData.slice(0));
   };
 
   overlay.querySelector('.scoreZoomIn').onclick=function(){
@@ -2484,26 +2545,15 @@ function showHymnScore(h){
 function renderHymns(list) { 
   const r=document.getElementById('hymnResult'); 
   r.innerHTML=''; 
-  r.classList.remove('scoreViewMode');
+  r.classList.remove('hymnTextDetail');
   r.classList.add('hymnScrollList');
-
-  const modeBar=document.createElement('div');
-  modeBar.className='hymnModeBar';
-  modeBar.innerHTML=`
-    <button type="button" class="${(window.currentHymnViewMode||'text')==='text'?'active':''}" onclick="setHymnViewMode('text')">텍스트 보기</button>
-    <button type="button" class="${window.currentHymnViewMode==='score'?'active':''}" onclick="setHymnViewMode('score')">악보 보기</button>
-  `;
-  r.appendChild(modeBar);
 
   list.forEach(h=>{ 
     const d=document.createElement('div'); 
     d.className='hymnItem'; 
     const no=String(h.number).padStart(3,'0');
     d.innerHTML=`<b>${no}. ${h.title}</b>`; 
-    d.onclick=()=>{ 
-      if(window.currentHymnViewMode==='score') showHymnScore(h);
-      else showHymnText(h);
-    }; 
+    d.onclick=()=>showHymnText(h); 
     r.appendChild(d); 
   }); 
 }
@@ -6510,7 +6560,7 @@ function resetMemoSearch(){
 </script>
 
 
-<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.3.4</div>
+<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.3.5</div>
 
 
 
