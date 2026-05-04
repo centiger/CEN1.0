@@ -6265,7 +6265,7 @@ function resetMemoSearch(){
 </script>
 
 
-<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.2.6</div>
+<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.2.7</div>
 
 
 
@@ -6401,6 +6401,103 @@ function resetMemoSearch(){
       history.pushState({ cenBackGuard: true }, "", location.href);
     } catch(e) {}
   });
+})();
+</script>
+
+
+<script id="cen-direct-chapter-select-fix">
+(function(){
+  const BOOK_NAMES = [
+    "창세기","출애굽기","레위기","민수기","신명기","여호수아","사사기","룻기","사무엘상","사무엘하",
+    "열왕기상","열왕기하","역대상","역대하","에스라","느헤미야","에스더","욥기","시편","잠언",
+    "전도서","아가","이사야","예레미야","예레미야애가","에스겔","다니엘","호세아","요엘","아모스",
+    "오바댜","요나","미가","나훔","하박국","스바냐","학개","스가랴","말라기","마태복음",
+    "마가복음","누가복음","요한복음","사도행전","로마서","고린도전서","고린도후서","갈라디아서","에베소서","빌립보서",
+    "골로새서","데살로니가전서","데살로니가후서","디모데전서","디모데후서","디도서","빌레몬서","히브리서","야고보서","베드로전서",
+    "베드로후서","요한일서","요한이서","요한삼서","유다서","요한계시록"
+  ];
+
+  function text(el){
+    return (el && (el.innerText || el.textContent) || "").replace(/\s+/g,"").trim();
+  }
+
+  function getBookNameFromTarget(el){
+    if(!el) return "";
+    let cur = el;
+    for(let depth=0; cur && depth<6; depth++, cur=cur.parentElement){
+      const t = text(cur);
+      for(const b of BOOK_NAMES){
+        if(t === b || t.startsWith(b) || t.includes(b+"0/") || t.includes(b+"1/")) return b;
+      }
+    }
+    return "";
+  }
+
+  function visible(el){
+    if(!el) return false;
+    const st = window.getComputedStyle(el);
+    if(st.display === "none" || st.visibility === "hidden" || Number(st.opacity) === 0) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  }
+
+  function tryClickByText(patterns){
+    const els = Array.from(document.querySelectorAll("button,a,[role='button'],.btn,.button,div,span,li"));
+    for(const el of els){
+      if(!visible(el)) continue;
+      const t = text(el);
+      if(!t) continue;
+      if(patterns.some(p => p.test(t))){
+        try { el.click(); return true; } catch(e){}
+      }
+    }
+    return false;
+  }
+
+  function tryCallKnownFunctions(bookName){
+    const candidates = [
+      "showChapterSelect","openChapterSelect","openChapterList","showChapterList",
+      "showBookChapters","openBookChapters","selectBook","goBook",
+      "openBibleBook","showBibleBook","renderChapters","renderChapterGrid"
+    ];
+    for(const fn of candidates){
+      try{
+        if(typeof window[fn] === "function"){
+          window[fn](bookName);
+          return true;
+        }
+      }catch(e){}
+    }
+    return false;
+  }
+
+  function forceDirect(bookName){
+    // 1. 앱 내부 함수가 전역에 있으면 우선 호출
+    if(tryCallKnownFunctions(bookName)) return;
+
+    // 2. 중간 화면에서 '전체 장/장 선택/장보기' 성격 버튼이 있으면 자동 클릭
+    if(tryClickByText([/전체장/, /장선택/, /장보기/, /전체보기/])) return;
+
+    // 3. 화면에 1장 버튼이 있으면 이미 장 선택 화면으로 들어온 상태이므로 종료
+    const hasChapterOne = Array.from(document.querySelectorAll("button,a,div,span"))
+      .some(el => visible(el) && /^1장?$/.test(text(el)));
+    if(hasChapterOne) return;
+
+    // 4. 다시 한 번 지연 실행
+    setTimeout(function(){
+      if(tryCallKnownFunctions(bookName)) return;
+      tryClickByText([/전체장/, /장선택/, /장보기/, /전체보기/]);
+    }, 120);
+  }
+
+  document.addEventListener("click", function(e){
+    const bookName = getBookNameFromTarget(e.target);
+    if(!bookName) return;
+
+    setTimeout(() => forceDirect(bookName), 40);
+    setTimeout(() => forceDirect(bookName), 160);
+    setTimeout(() => forceDirect(bookName), 360);
+  }, true);
 })();
 </script>
 
