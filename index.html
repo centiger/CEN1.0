@@ -1595,30 +1595,20 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
 </script>
 
 
-<style id="cen-hymn-scroll-style">
-#hymnPanel .panel {
-  display:flex;
-  flex-direction:column;
-  max-height:88vh;
-}
-#hymnResult.hymnScrollList {
-  margin-top:8px;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  max-height:calc(88vh - 145px);
-  padding-right:4px;
-  border-top:1px solid #eee0cc;
-}
-#hymnResult.hymnScrollList::-webkit-scrollbar {
-  width:7px;
-}
-#hymnResult.hymnScrollList::-webkit-scrollbar-thumb {
-  background:rgba(80,60,40,.28);
-  border-radius:999px;
-}
-#hymnResult .hymnItem {
-  cursor:pointer;
-}
+
+
+
+<style id="cen-hymn-score-style">
+#hymnPanel .panel{display:flex;flex-direction:column;max-height:88vh;}
+#hymnResult.hymnScrollList{margin-top:8px;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:calc(88vh - 145px);padding-right:4px;border-top:1px solid #eee0cc;}
+#hymnResult.hymnScrollList::-webkit-scrollbar{width:7px;}
+#hymnResult.hymnScrollList::-webkit-scrollbar-thumb{background:rgba(80,60,40,.28);border-radius:999px;}
+.hymnModeBar{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 0;background:#fffaf2;}
+.hymnModeBar button{border:1px solid #e0d2bf;border-radius:12px;padding:10px;background:#fff;color:#5b4632;font-weight:800;}
+.hymnModeBar button.active{background:#e5c9a6;}
+.scoreWrap{width:100%;overflow:auto;-webkit-overflow-scrolling:touch;max-height:70vh;border:1px solid #eadfce;border-radius:12px;background:#fff;}
+.hymnScoreImg{display:block;width:100%;height:auto;}
+.scoreMissing{padding:22px;text-align:center;line-height:1.6;color:#6b5440;background:#fff8ee;border:1px solid #eadfce;border-radius:12px;}
 </style>
 
 </head>
@@ -2299,6 +2289,7 @@ async function openHymnFromSettings() {
   document.getElementById('hymnPanel').style.display='flex'; 
   const input=document.getElementById('hymnInput');
   if(input) input.value='';
+  window.currentHymnViewMode = window.currentHymnViewMode || 'text';
   renderHymns(hymnData.slice(0)); 
 }
 function searchHymn() { 
@@ -2306,18 +2297,56 @@ function searchHymn() {
   const list = q ? hymnData.filter(h=>String(h.number).padStart(3,'0').includes(q)||String(h.number).includes(q)||h.title.includes(q)) : hymnData.slice(0);
   renderHymns(list); 
 }
+function setHymnViewMode(mode){
+  window.currentHymnViewMode = mode;
+  renderHymns(hymnData.slice(0));
+}
+function showHymnText(h){
+  const r=document.getElementById('hymnResult');
+  const no=String(h.number).padStart(3,'0');
+  r.classList.remove('hymnScrollList');
+  r.innerHTML=`<div class="hymnItem" onclick="renderHymns(hymnData.slice(0))">← 목록</div><h3>${no}. ${h.title}</h3><pre>${escapeHtml(h.lyrics)}</pre>`;
+}
+function showHymnScore(h){
+  const r=document.getElementById('hymnResult');
+  const no=String(h.number).padStart(3,'0');
+  r.classList.remove('hymnScrollList');
+  r.innerHTML=`<div class="hymnItem" onclick="renderHymns(hymnData.slice(0))">← 목록</div><h3>${no}. ${h.title}</h3><div class="scoreWrap"><img class="hymnScoreImg" alt="${no}. ${h.title} 악보"></div>`;
+  const img=r.querySelector('img');
+  img.src=`hymn/${no}.jpg`;
+  img.onerror=function(){
+    if(!img.dataset.pngTried){
+      img.dataset.pngTried='1';
+      img.src=`hymn/${no}.png`;
+    }else{
+      const div=document.createElement('div');
+      div.className='scoreMissing';
+      div.innerHTML='악보 이미지가 없습니다.<br>GitHub에 <b>hymn/'+no+'.jpg</b> 파일을 올려주세요.';
+      img.replaceWith(div);
+    }
+  };
+}
 function renderHymns(list) { 
   const r=document.getElementById('hymnResult'); 
   r.innerHTML=''; 
   r.classList.add('hymnScrollList');
+
+  const modeBar=document.createElement('div');
+  modeBar.className='hymnModeBar';
+  modeBar.innerHTML=`
+    <button type="button" class="${(window.currentHymnViewMode||'text')==='text'?'active':''}" onclick="setHymnViewMode('text')">텍스트 보기</button>
+    <button type="button" class="${window.currentHymnViewMode==='score'?'active':''}" onclick="setHymnViewMode('score')">악보 보기</button>
+  `;
+  r.appendChild(modeBar);
+
   list.forEach(h=>{ 
     const d=document.createElement('div'); 
     d.className='hymnItem'; 
     const no=String(h.number).padStart(3,'0');
     d.innerHTML=`<b>${no}. ${h.title}</b>`; 
     d.onclick=()=>{ 
-      r.classList.remove('hymnScrollList');
-      r.innerHTML=`<div class="hymnItem" onclick="renderHymns(hymnData.slice(0))">← 목록</div><h3>${no}. ${h.title}</h3><pre>${escapeHtml(h.lyrics)}</pre>`; 
+      if(window.currentHymnViewMode==='score') showHymnScore(h);
+      else showHymnText(h);
     }; 
     r.appendChild(d); 
   }); 
@@ -6325,7 +6354,7 @@ function resetMemoSearch(){
 </script>
 
 
-<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.3.1</div>
+<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.3.2</div>
 
 
 
