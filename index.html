@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
 
 <!-- Android Chrome address-bar-free / PWA single-file setup -->
 <meta name="theme-color" content="#b8946a">
@@ -1601,25 +1601,113 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
 
 
 
-<style id="cen-hymn-score-style">
-#hymnPanel .panel{display:flex;flex-direction:column;max-height:94vh;}
-#hymnResult.hymnScrollList{margin-top:8px;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:calc(94vh - 145px);padding-right:4px;border-top:1px solid #eee0cc;}
-#hymnResult.hymnScrollList::-webkit-scrollbar{width:7px;}
-#hymnResult.hymnScrollList::-webkit-scrollbar-thumb{background:rgba(80,60,40,.28);border-radius:999px;}
-.hymnModeBar{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 0;background:#fffaf2;}
-.hymnModeBar button{border:1px solid #e0d2bf;border-radius:12px;padding:10px;background:#fff;color:#5b4632;font-weight:800;}
-.hymnModeBar button.active{background:#e5c9a6;}
-#hymnResult.scoreViewMode{margin-top:4px;overflow:hidden;flex:1;}
-.scoreTopBar{display:flex;align-items:center;gap:10px;padding:4px 0 8px;background:#fffaf2;}
-.scoreTopBar button{border:1px solid #e0d2bf;border-radius:999px;padding:8px 12px;background:#fff;color:#5b4632;font-weight:800;white-space:nowrap;}
-.scoreTopBar strong{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.scoreWrap{width:100%;height:calc(94vh - 92px);overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pinch-zoom;border:1px solid #eadfce;border-radius:12px;background:#fff;}
-.hymnScoreImg{display:block;width:125%;max-width:none;height:auto;transform-origin:top left;}
-.scoreMissing{padding:22px;text-align:center;line-height:1.6;color:#6b5440;background:#fff8ee;border:1px solid #eadfce;border-radius:12px;}
-@media (max-width:480px){
-  #hymnPanel .panel{max-height:96vh;}
-  .scoreWrap{height:calc(96vh - 82px);}
-  .hymnScoreImg{width:130%;}
+
+
+
+<style id="cen-score-viewer-style">
+body.scoreViewerOpen{
+  overflow:hidden !important;
+}
+
+#scoreViewerOverlay{
+  position:fixed;
+  inset:0;
+  z-index:9999999;
+  background:#fffaf2;
+  display:flex;
+  flex-direction:column;
+  width:100vw;
+  height:100vh;
+  height:100dvh;
+}
+
+.scoreViewerHeader{
+  flex:0 0 auto;
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:8px;
+  padding:10px 10px 8px;
+  padding-top:calc(10px + env(safe-area-inset-top));
+  background:#fffaf2;
+  border-bottom:1px solid #e6d8c7;
+}
+
+.scoreViewerHeader button{
+  border:1px solid #d9c8b4;
+  background:#fff;
+  color:#5b4632;
+  border-radius:999px;
+  padding:8px 12px;
+  font-weight:900;
+  font-size:14px;
+}
+
+.scoreViewerTitle{
+  min-width:0;
+  text-align:center;
+  font-weight:900;
+  color:#4b3828;
+  font-size:15px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.scoreZoomBtns{
+  display:flex;
+  gap:6px;
+}
+
+.scoreZoomBtns button{
+  width:36px;
+  height:36px;
+  padding:0;
+  font-size:18px;
+  line-height:1;
+}
+
+.scoreViewerBody{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  touch-action:auto;
+  overscroll-behavior:contain;
+  background:#fff;
+  padding:0;
+  text-align:left;
+}
+
+.scoreViewerImg{
+  display:block;
+  width:100%;
+  max-width:none;
+  height:auto;
+  margin:0 auto;
+  transform-origin:top left;
+  user-select:none;
+  -webkit-user-drag:none;
+}
+
+.scoreMissing{
+  margin:18px;
+  padding:22px;
+  text-align:center;
+  line-height:1.6;
+  color:#6b5440;
+  background:#fff8ee;
+  border:1px solid #eadfce;
+  border-radius:12px;
+}
+
+@media (orientation:landscape){
+  .scoreViewerHeader{
+    padding-top:8px;
+  }
+  .scoreViewerTitle{
+    font-size:14px;
+  }
 }
 </style>
 
@@ -2320,25 +2408,65 @@ function showHymnText(h){
   r.innerHTML=`<div class="hymnItem" onclick="renderHymns(hymnData.slice(0))">← 목록</div><h3>${no}. ${h.title}</h3><pre>${escapeHtml(h.lyrics)}</pre>`;
 }
 function showHymnScore(h){
-  const r=document.getElementById('hymnResult');
   const no=String(h.number).padStart(3,'0');
+  const title=h.title || '';
+
   const input=document.getElementById('hymnInput');
   if(input) input.blur();
 
-  r.classList.remove('hymnScrollList');
-  r.classList.add('scoreViewMode');
+  let old=document.getElementById('scoreViewerOverlay');
+  if(old) old.remove();
 
-  r.innerHTML=`
-    <div class="scoreTopBar">
-      <button type="button" onclick="renderHymns(hymnData.slice(0))">← 목록</button>
-      <strong>${no}. ${h.title}</strong>
+  const overlay=document.createElement('div');
+  overlay.id='scoreViewerOverlay';
+  overlay.innerHTML=`
+    <div class="scoreViewerHeader">
+      <button type="button" class="scoreBackBtn">← 목록</button>
+      <div class="scoreViewerTitle">${no}. ${title}</div>
+      <div class="scoreZoomBtns">
+        <button type="button" class="scoreZoomOut">－</button>
+        <button type="button" class="scoreZoomIn">＋</button>
+      </div>
     </div>
-    <div class="scoreWrap">
-      <img class="hymnScoreImg" alt="${no}. ${h.title} 악보">
+    <div class="scoreViewerBody">
+      <img class="scoreViewerImg" alt="${no}. ${title} 악보">
     </div>
   `;
 
-  const img=r.querySelector('img');
+  document.body.appendChild(overlay);
+  document.body.classList.add('scoreViewerOpen');
+
+  const img=overlay.querySelector('.scoreViewerImg');
+  const body=overlay.querySelector('.scoreViewerBody');
+  let zoom=1;
+
+  function applyZoom(){
+    img.style.width=(zoom*100)+'%';
+  }
+
+  overlay.querySelector('.scoreBackBtn').onclick=function(){
+    overlay.remove();
+    document.body.classList.remove('scoreViewerOpen');
+    renderHymns(hymnData.slice(0));
+  };
+
+  overlay.querySelector('.scoreZoomIn').onclick=function(){
+    zoom=Math.min(2.5, zoom+0.15);
+    applyZoom();
+  };
+
+  overlay.querySelector('.scoreZoomOut').onclick=function(){
+    zoom=Math.max(0.75, zoom-0.15);
+    applyZoom();
+  };
+
+  img.onload=function(){
+    zoom=1;
+    applyZoom();
+    body.scrollTop=0;
+    body.scrollLeft=0;
+  };
+
   img.src=`hymn/${no}.jpg`;
   img.onerror=function(){
     if(!img.dataset.pngTried){
@@ -6382,7 +6510,7 @@ function resetMemoSearch(){
 </script>
 
 
-<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.3.3</div>
+<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.3.4</div>
 
 
 
