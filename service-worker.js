@@ -1,4 +1,4 @@
-const CACHE_NAME = "cen-bible-v1.4.1-esv";
+const CACHE_NAME = "cen-bible-v1.4.1-esv-exit-green-exit-brown-oneline-export-cen-folder-final-guide-export";
 const APP_SHELL = [
   "./",
   "./index.html",

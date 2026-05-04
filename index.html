@@ -102,7 +102,7 @@ button.icon { color:#5f5f5f; font-weight:800; background:transparent; border-col
 #selectToolbar button { width:auto; padding:5px 7px; font-size:12px; }
 #selectToolbar input[type="color"] { width:30px; height:30px; padding:0; border:1px solid #d9c5aa; border-radius:9px; background:#fffaf2; flex:0 0 auto; }
 .verse.highlighted { border-radius:8px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
-#toast { position:fixed; left:50%; bottom:82px; transform:translateX(-50%); z-index:200; background:#3c2d1f; color:white; border-radius:18px; padding:9px 14px; display:none; font-size:13px; }
+#toast { position:fixed; left:50%; bottom:82px; transform:translateX(-50%); z-index:200; background:rgba(62,47,28,.90); color:#fffaf2; border-radius:18px; padding:9px 14px; display:none; font-size:13px; font-weight:700; box-shadow:0 8px 22px rgba(0,0,0,.22); }
 #readingPlan { position:fixed; inset:0; z-index:110; background:#fffaf2; display:none; overflow:auto; padding:12px 14px 30px; }
 .planTop { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
 .planTop h2 { flex:1; margin:0; color:#6d4f31; }
@@ -217,13 +217,13 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
   z-index:99999;
 }
 #exitConfirmDialog .exitBox{
-  width:min(300px,82vw);
-  background:#fffaf2;
-  border:1px solid #d8c3a5;
+  width:min(560px,92vw);
+  background:rgba(62,47,28,0.90);
+  border:1px solid rgba(255,250,242,.22);
   border-radius:16px;
-  box-shadow:0 10px 28px rgba(0,0,0,.2);
+  box-shadow:0 10px 28px rgba(0,0,0,.22);
   padding:18px 16px 14px;
-  color:#3e2f1c;
+  color:#fffaf2;
   font-family:'Nanum Gothic',sans-serif;
   text-align:center;
 }
@@ -231,6 +231,12 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
   font-size:16px;
   line-height:1.4;
   margin-bottom:14px;
+  white-space:nowrap;
+  word-break:keep-all;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  color:#fffaf2;
+  font-weight:700;
 }
 #exitConfirmDialog .exitBtns{
   display:flex;
@@ -238,16 +244,17 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
 }
 #exitConfirmDialog .exitBtns button{
   flex:1;
-  border:1px solid #d8c3a5;
-  background:#fff;
-  color:#5a4633;
+  border:1px solid rgba(255,250,242,.34);
+  background:rgba(255,250,242,.94);
+  color:#3e2f1c;
   border-radius:10px;
   padding:9px 0;
   font-size:14px;
   font-family:'Nanum Gothic',sans-serif;
+  font-weight:700;
 }
 #exitConfirmDialog #exitYesBtn{
-  background:#d8c3a5;
+  background:rgba(216,195,165,.95);
   color:#3e2f1c;
 }
 
@@ -1984,7 +1991,18 @@ body.scoreViewerOpen{
       </ul>
     </div>
 
-    <div class="guideSection"><h4><span class="guideNum">9</span> 사용 권장</h4>
+
+    <div class="guideSection"><h4><span class="guideNum">9</span> 데이터 내보내기·불러오기</h4>
+      <ul class="guideList">
+        <li><b>내보내기</b>를 누르면 성구, 메모, 성경읽기표, 화면설정 등 개인 데이터를 백업할 수 있습니다.</li>
+        <li>지원되는 브라우저에서는 사용자가 선택한 위치 안에 <b>CEN Bible</b> 폴더를 자동으로 만들고, 그 안에 백업 파일을 저장합니다.</li>
+        <li><b>불러오기</b>를 누르면 선택한 위치의 <b>CEN Bible</b> 폴더에서 최신 백업 파일을 찾아 불러옵니다.</li>
+        <li>브라우저 보안 제한으로 자동 폴더 접근이 지원되지 않는 경우에는 파일 선택창에서 백업 파일을 직접 선택합니다.</li>
+      </ul>
+      <div class="guideNote">백업 파일명은 <b>cen-bible-backup-날짜.json</b> 형식으로 저장됩니다.</div>
+    </div>
+
+    <div class="guideSection"><h4><span class="guideNum">10</span> 사용 권장</h4>
       <div class="guideProcessLine" aria-label="Chrome 홈 화면 추가 절차">
         <span class="guideProcessItem"><span>📁</span>내파일에서 HTML 선택</span>
         <span class="guideProcessArrow">→</span>
@@ -1997,7 +2015,7 @@ body.scoreViewerOpen{
       <div class="guideNote">Chrome에서 홈 화면에 추가하면 앱처럼 빠르게 실행할 수 있습니다.</div>
     </div>
 
-    <div class="guideSection guideWarn"><h4><span class="guideNum">10</span> 배포 유의사항</h4>
+    <div class="guideSection guideWarn"><h4><span class="guideNum">11</span> 배포 유의사항</h4>
       <ul class="guideList guideLegalList">
         <li>무단 복제 및 배포를 금지합니다.</li>
         <li>본 앱은 개인의 영성 관리 및 비영리 학습 목적으로 제작되었으므로 상업적 이용을 금지합니다.</li>
@@ -2892,7 +2910,7 @@ function setupBackGuard() {
     dlg.id = 'exitConfirmDialog';
     dlg.innerHTML = `
       <div class="exitBox">
-        <div class="exitTitle">앱을 종료하시겠습니까?</div>
+        <div class="exitTitle">한 번 더 뒤로가기를 누르면 종료됩니다.</div>
         <div class="exitBtns">
           <button type="button" id="exitNoBtn">취소</button>
           <button type="button" id="exitYesBtn">종료</button>
@@ -3540,7 +3558,8 @@ function openGuideFromSettings(e){
     return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes());
   }
 
-  window.exportCenBibleData = function(e){
+  
+window.exportCenBibleData = async function(e){
     if(e) e.stopPropagation();
     const data = {
       app: 'CEN Bible',
@@ -3552,19 +3571,92 @@ function openGuideFromSettings(e){
       const value = localStorage.getItem(key);
       if(value !== null) data.localStorage[key] = value;
     });
+
+    const filename = 'cen-bible-backup-' + makeDateStamp() + '.json';
     const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+
+    try {
+      // Chrome/Edge 계열에서는 사용자가 선택한 위치 안에 CEN Bible 폴더를 만들고 저장합니다.
+      if (window.showDirectoryPicker) {
+        const root = await window.showDirectoryPicker({mode:'readwrite'});
+        const dir = await root.getDirectoryHandle('CEN Bible', {create:true});
+        const fileHandle = await dir.getFileHandle(filename, {create:true});
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        localStorage.setItem('lastBackupAtV1', new Date().toISOString());
+        if(window.updateBackupStatus) updateBackupStatus();
+        if(window.toast) toast('CEN Bible 폴더에 백업 파일을 저장했습니다.');
+        else alert('CEN Bible 폴더에 백업 파일을 저장했습니다.');
+        return;
+      }
+    } catch(err) {
+      if(window.toast) toast('저장이 취소되었습니다.');
+      return;
+    }
+
+    // File System Access API가 없는 브라우저용 대체 저장
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'cen-bible-backup-' + makeDateStamp() + '.json';
+    a.download = 'CEN Bible - ' + filename;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    localStorage.setItem('lastBackupAtV1', new Date().toISOString()); if(window.updateBackupStatus) updateBackupStatus(); if(window.toast) toast('데이터 백업 파일을 저장했습니다.');
-    else alert('데이터 백업 파일을 저장했습니다.');
+    localStorage.setItem('lastBackupAtV1', new Date().toISOString());
+    if(window.updateBackupStatus) updateBackupStatus();
+    if(window.toast) toast('백업 파일을 저장했습니다. 다운로드 폴더에서 CEN Bible 파일명을 확인하세요.');
+    else alert('백업 파일을 저장했습니다.');
   };
 
-  window.importCenBibleData = function(e){
+  async function restoreBackupText(text){
+    const parsed = JSON.parse(text);
+    const store = parsed && parsed.localStorage;
+    if(!store || typeof store !== 'object') throw new Error('invalid');
+    const keys = Object.keys(store).filter(k => BACKUP_KEYS.includes(k));
+    if(!keys.length) throw new Error('empty');
+    if(!confirm('백업 데이터를 불러오면 현재 저장된 성구·메모·읽기표·설정이 덮어써집니다. 계속할까요?')) return;
+    keys.forEach(k => localStorage.setItem(k, String(store[k])));
+    alert('데이터를 불러왔습니다. 앱을 다시 열어 반영합니다.');
+    location.reload();
+  }
+
+  window.importCenBibleData = async function(e){
     if(e) e.stopPropagation();
+
+    // Chrome/Edge 계열에서는 선택한 위치의 CEN Bible 폴더에서 최신 백업 파일을 자동으로 찾습니다.
+    if (window.showDirectoryPicker) {
+      try {
+        const root = await window.showDirectoryPicker({mode:'read'});
+        let dir;
+        try { dir = await root.getDirectoryHandle('CEN Bible'); }
+        catch(err) {
+          if(window.toast) toast('선택한 위치에 CEN Bible 폴더가 없습니다.');
+          else alert('선택한 위치에 CEN Bible 폴더가 없습니다.');
+          return;
+        }
+
+        const files = [];
+        for await (const [name, handle] of dir.entries()) {
+          if (handle.kind === 'file' && /^cen-bible-backup-.*\.json$/i.test(name)) {
+            files.push({name, handle});
+          }
+        }
+        files.sort((a,b)=>b.name.localeCompare(a.name));
+        if(!files.length) {
+          if(window.toast) toast('CEN Bible 폴더에 백업 파일이 없습니다.');
+          else alert('CEN Bible 폴더에 백업 파일이 없습니다.');
+          return;
+        }
+        const file = await files[0].handle.getFile();
+        await restoreBackupText(await file.text());
+        return;
+      } catch(err) {
+        if(window.toast) toast('불러오기가 취소되었습니다.');
+        return;
+      }
+    }
+
+    // 대체 방식: 사용자가 직접 백업 파일 선택
     const input = document.getElementById('cenBibleImportFile');
     if(!input) return alert('불러오기 입력창을 찾을 수 없습니다.');
     input.value = '';
@@ -3578,17 +3670,9 @@ function openGuideFromSettings(e){
       const file = input.files && input.files[0];
       if(!file) return;
       const reader = new FileReader();
-      reader.onload = function(){
+      reader.onload = async function(){
         try {
-          const parsed = JSON.parse(reader.result);
-          const store = parsed && parsed.localStorage;
-          if(!store || typeof store !== 'object') throw new Error('invalid');
-          const keys = Object.keys(store).filter(k => BACKUP_KEYS.includes(k));
-          if(!keys.length) throw new Error('empty');
-          if(!confirm('백업 데이터를 불러오면 현재 저장된 성구·메모·읽기표·설정이 덮어써집니다. 계속할까요?')) return;
-          keys.forEach(k => localStorage.setItem(k, String(store[k])));
-          alert('데이터를 불러왔습니다. 앱을 다시 열어 반영합니다.');
-          location.reload();
+          await restoreBackupText(reader.result);
         } catch(err) {
           alert('백업 파일을 읽지 못했습니다. cen-bible-backup.json 파일인지 확인해 주세요.');
         }
@@ -3596,6 +3680,7 @@ function openGuideFromSettings(e){
       reader.readAsText(file, 'utf-8');
     });
   });
+
 })();
 </script>
 
