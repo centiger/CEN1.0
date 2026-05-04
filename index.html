@@ -2893,7 +2893,7 @@ function openGuideFromSettings(e){
     if(typeof closeSettings === 'function') closeSettings();
     const panel=document.getElementById('savedSearchPanel');
     if(panel) panel.style.display='flex';
-    setTimeout(()=>{ const input=document.getElementById('savedSearchInput'); if(input) input.focus(); renderSavedSearch(); },80);
+    setTimeout(()=>{ const input=document.getElementById('savedSearchInput'); if(input) /* auto focus disabled */ renderSavedSearch(); },80);
   };
   window.clearSavedSearch = function(){
     const input=document.getElementById('savedSearchInput');
@@ -6249,20 +6249,20 @@ function resetMemoSearch(){
 
 
 <div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">
-v1.2.1
+v1.2.2
 </div>
 
 
 <script id="cen-pwa-final-script">
 (function() {
-  var APP_VERSION = "1.2.1";
+  var APP_VERSION = "1.2.2";
   window.CEN_APP_VERSION = APP_VERSION;
 
+  // PWA 자동 업데이트
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function() {
       navigator.serviceWorker.register("./service-worker.js").then(function(reg) {
         try { reg.update(); } catch(e) {}
-
         reg.addEventListener("updatefound", function() {
           var nw = reg.installing;
           if (!nw) return;
@@ -6285,29 +6285,77 @@ v1.2.1
     });
   }
 
+  // 뒤로가기 두 번 종료: 확인창 없음
   function isStandalone() {
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   }
 
-  try {
-    if (!history.state || !history.state.cenExitGuard) {
-      history.replaceState({ cenExitBase: true }, "", location.href);
-      history.pushState({ cenExitGuard: true }, "", location.href);
+  function showBackToast() {
+    var toast = document.getElementById("cenBackToast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "cenBackToast";
+      toast.textContent = "한 번 더 누르면 종료됩니다";
+      toast.style.cssText = "position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:999999;background:rgba(40,32,25,.86);color:#fff;padding:10px 14px;border-radius:999px;font-size:14px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.18);opacity:0;transition:opacity .15s ease;pointer-events:none;white-space:nowrap;";
+      document.body.appendChild(toast);
     }
+    toast.style.opacity = "1";
+    clearTimeout(window.__cenBackToastTimer);
+    window.__cenBackToastTimer = setTimeout(function() {
+      toast.style.opacity = "0";
+    }, 1400);
+  }
+
+  var lastBackTime = 0;
+  try {
+    history.replaceState({ cenBase: true }, "", location.href);
+    history.pushState({ cenBackGuard: true }, "", location.href);
   } catch(e) {}
 
   window.addEventListener("popstate", function() {
     if (!isStandalone()) return;
-    var ok = confirm("앱을 종료하시겠습니까?");
-    if (ok) {
-      try { window.close(); } catch(err) {}
+
+    var now = Date.now();
+    if (now - lastBackTime < 1500) {
+      // 두 번째 뒤로가기: 앱 종료 시도
+      try { history.go(-2); } catch(e) { history.back(); }
       setTimeout(function() {
-        try { history.go(-2); } catch(err) { history.back(); }
-      }, 50);
-    } else {
-      try { history.pushState({ cenExitGuard: true }, "", location.href); } catch(err) {}
+        try { window.close(); } catch(e) {}
+      }, 30);
+      return;
     }
+
+    lastBackTime = now;
+    showBackToast();
+
+    // 첫 번째 뒤로가기는 앱에 머물도록 히스토리 가드 복구
+    try {
+      history.pushState({ cenBackGuard: true }, "", location.href);
+    } catch(e) {}
   });
+})();
+</script>
+
+
+<script id="cen-search-keyboard-fix">
+(function(){
+  function isSearchMenuTrigger(el){
+    if(!el) return false;
+    var txt = (el.innerText || el.textContent || "").trim();
+    var id = (el.id || "").toLowerCase();
+    var cls = (el.className || "").toString().toLowerCase();
+    return txt === "통합검색" || id.includes("searchmenu") || id.includes("totalsearch") || cls.includes("search-menu");
+  }
+  document.addEventListener("click", function(e){
+    var trigger = e.target.closest ? e.target.closest("button, a, [role='button'], .menu-item, .tab, .nav-item") : null;
+    if(!isSearchMenuTrigger(trigger)) return;
+    setTimeout(function(){
+      var active = document.activeElement;
+      if(active && /^(INPUT|TEXTAREA)$/.test(active.tagName)){
+        active.blur();
+      }
+    }, 80);
+  }, true);
 })();
 </script>
 
