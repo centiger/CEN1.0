@@ -1643,7 +1643,7 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
 <div id="bookModal" class="modal"><div class="panel"><div class="panelHead"><h3>성경 선택</h3><button class="xbtn" onclick="closeModal('bookModal')">×</button></div><h4>구약</h4><div id="otBooks" class="bookGrid"></div><h4>신약</h4><div id="ntBooks" class="bookGrid"></div></div></div>
 <div id="chapterModal" class="modal"><div class="panel"><div class="panelHead"><h3>장 선택</h3><button class="xbtn" onclick="closeModal('chapterModal')">×</button></div><div id="chapters" class="chapGrid"></div></div></div>
 <div id="versionModal" class="modal"><div class="panel"><div class="panelHead"><h3>번역본</h3><button class="xbtn" onclick="closeModal('versionModal')">×</button></div><div id="versions" class="versionList"></div></div></div>
-<div id="searchPanel" class="modal"><div class="panel"><div class="panelHead"><h3>성경 검색</h3><button class="xbtn" onclick="closeModal('searchPanel')">×</button></div><input id="searchInput" placeholder="검색어 입력"><div class="settingBtns"><button class="colored" onclick="searchBible()">검색</button><button onclick="clearBibleSearch()">검색초기화</button></div><div id="searchResult"></div></div></div>
+<div id="searchPanel" class="modal"><div class="panel"><div class="panelHead"><h3>성경 검색</h3><button class="xbtn" onclick="closeModal('searchPanel')">×</button></div><input id="searchInput" placeholder="검색어 입력"><div class="settingBtns"><button class="colored" onclick="searchBible()">검색</button><button onclick="clearBibleSearch()">권별초기화</button></div><div id="searchResult"></div></div></div>
 <div id="hymnPanel" class="modal"><div class="panel"><div class="panelHead"><h3>찬송가</h3><button class="xbtn" onclick="closeModal('hymnPanel')">×</button></div><input id="hymnInput" placeholder="번호 또는 제목 검색"><div class="settingBtns"><button class="colored" onclick="searchHymn()">검색</button></div><div id="hymnResult"></div></div></div>
 <div id="memoListPanel" class="modal"><div class="panel"><div class="panelHead"><h3>메모 전체보기</h3><button class="xbtn" onclick="closeModal('memoListPanel')">×</button></div><div class="memoToolbar"><input id="memoSearchInput" placeholder="메모 검색어"><button onclick="renderMemoList()">검색</button><button onclick="resetMemoSearch()">초기화</button></div><div id="memoListArea"></div></div></div>
 <div id="savedSearchPanel" class="modal"><div class="panel"><div class="panelHead"><h3>저장자료 통합검색</h3><button class="xbtn" onclick="closeModal('savedSearchPanel')">×</button></div>
@@ -1721,7 +1721,7 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
       <ul class="guideList">
         <li>돋보기 버튼을 눌러 단어 또는 구절 일부를 검색합니다.</li>
         <li>검색 결과에서 본문 위치를 확인하거나 필요한 구절을 나의 성구에 저장할 수 있습니다.</li>
-        <li>검색창의 <b>검색초기화</b> 버튼으로 검색어와 결과를 지울 수 있습니다.</li>
+        <li>검색창의 <b>권별초기화</b> 버튼으로 검색어와 결과를 지울 수 있습니다.</li>
         <li>검색창에서 나가면 검색어와 결과가 자동으로 초기화됩니다.</li>
       </ul>
     </div>
@@ -3434,7 +3434,7 @@ function openGuideFromSettings(e){
     const done=bookCheckedCount(book);
     const count=bookReadCount(book);
     const ready = done === totalB && totalB > 0;
-    area.innerHTML=`<div class="bookPlanHeader"><span class="bookTitle">${book}</span><span class="bookReadCount">${count}독</span><span class="bookDoneState">${done}/${totalB}장</span><span class="bookPlanActions"><button class="${ready?'completeReady':''}" onclick="completeBookPlan('${book}')">완료</button><button onclick="resetBookPlan('${book}')">리셋</button><button onclick="initializeBookPlan('${book}')">검색초기화</button></span></div><div class="planChapGrid"></div>`;
+    area.innerHTML=`<div class="bookPlanHeader"><span class="bookTitle">${book}</span><span class="bookReadCount">${count}독</span><span class="bookDoneState">${done}/${totalB}장</span><span class="bookPlanActions"><button class="${ready?'completeReady':''}" onclick="completeBookPlan('${book}')">완료</button><button onclick="resetBookPlan('${book}')">리셋</button><button onclick="initializeBookPlan('${book}')">권별초기화</button></span></div><div class="planChapGrid"></div>`;
     const grid=area.querySelector('.planChapGrid');
     chs.forEach(c=>{
       const btn=document.createElement('button');
@@ -3625,10 +3625,10 @@ function openGuideFromSettings(e){
     // Ensure detail screen has both buttons, and no duplicate.
     const actions = document.querySelector('#bookPlanArea .bookPlanActions');
     if(actions){
-      const initButtons = Array.from(actions.querySelectorAll('button')).filter(b => b.textContent.trim() === '검색초기화');
+      const initButtons = Array.from(actions.querySelectorAll('button')).filter(b => b.textContent.trim() === '권별초기화');
       if(initButtons.length === 0){
         const btn = document.createElement('button');
-        btn.textContent = '검색초기화';
+        btn.textContent = '권별초기화';
         btn.onclick = function(){ initializeBookPlan(book); };
         actions.appendChild(btn);
       } else if(initButtons.length > 1){
@@ -4014,7 +4014,7 @@ function resetMemoSearch(){
     const prev = adjacentBook(book, -1);
     const next = adjacentBook(book, 1);
 
-    area.innerHTML = `<div class="bookPlanHeader"><span class="bookTitle">${book}</span><span class="bookReadCount">${count}독</span><span class="bookDoneState">${done}/${total}장</span><span class="bookPlanActions"><button class="bookNavBtn" ${prev?'':'disabled'} onclick="movePlanBook('${book}',-1)">《 이전</button><button class="bookNavBtn" ${next?'':'disabled'} onclick="movePlanBook('${book}',1)">다음 》</button><button class="${ready?'completeReady':''}" onclick="completeBookPlan('${book}')">완료</button><button onclick="resetBookPlan('${book}')">리셋</button><button onclick="initializeBookPlan('${book}')">검색초기화</button></span></div><div class="planChapGrid"></div>`;
+    area.innerHTML = `<div class="bookPlanHeader"><span class="bookTitle">${book}</span><span class="bookReadCount">${count}독</span><span class="bookDoneState">${done}/${total}장</span><span class="bookPlanActions"><button class="bookNavBtn" ${prev?'':'disabled'} onclick="movePlanBook('${book}',-1)">《 이전</button><button class="bookNavBtn" ${next?'':'disabled'} onclick="movePlanBook('${book}',1)">다음 》</button><button class="${ready?'completeReady':''}" onclick="completeBookPlan('${book}')">완료</button><button onclick="resetBookPlan('${book}')">리셋</button><button onclick="initializeBookPlan('${book}')">권별초기화</button></span></div><div class="planChapGrid"></div>`;
 
     const grid = area.querySelector('.planChapGrid');
     for(let i=1; i<=total; i++){
@@ -4141,7 +4141,7 @@ function resetMemoSearch(){
         <span class="bookPlanActions">
           <button class="${ready?'completeReady':''}" onclick="completeBookPlan('${book}')">완료</button>
           <button onclick="resetBookPlan('${book}')">리셋</button>
-          <button onclick="initializeBookPlan('${book}')">검색초기화</button>
+          <button onclick="initializeBookPlan('${book}')">권별초기화</button>
         </span>
       </div>
       <div class="planChapGrid"></div>`;
@@ -4328,7 +4328,7 @@ function resetMemoSearch(){
         <span class="bookPlanActions">
           <button class="${ready?'completeReady':''}" onclick="completeBookPlan('${book}')">완료</button>
           <button onclick="resetBookPlan('${book}')">리셋</button>
-          <button onclick="initializeBookPlan('${book}')">검색초기화</button>
+          <button onclick="initializeBookPlan('${book}')">권별초기화</button>
         </span>
       </div>
       <div class="planChapGrid"></div>`;
@@ -4743,7 +4743,7 @@ function resetMemoSearch(){
         <span class="bookPlanActions">
           <button class="${ready?'completeReady':''}" onclick="completeBookPlan('${book}')">완료</button>
           <button onclick="resetBookPlan('${book}')">리셋</button>
-          <button onclick="initializeBookPlan('${book}')">검색초기화</button>
+          <button onclick="initializeBookPlan('${book}')">권별초기화</button>
         </span>
       </div>
       <div class="planChapGrid"></div>`;
@@ -4865,7 +4865,7 @@ function resetMemoSearch(){
       +'<span class="bookReadCount">'+count+'독</span>'
       +'<span class="bookDoneState">'+done+'/'+total+'장</span>'
       +'<span class="bookPlanNavBtns"><button class="bookNavBtn" '+(prev?'':'disabled')+' onclick="movePlanBook(\''+book+'\',-1)">《 이전</button><button class="bookNavBtn" '+(next?'':'disabled')+' onclick="movePlanBook(\''+book+'\',1)">다음 》</button></span>'
-      +'<span class="bookPlanActions"><button class="'+(ready?'completeReady':'')+'" onclick="completeBookPlan(\''+book+'\')">완료</button><button onclick="resetBookPlan(\''+book+'\')">리셋</button><button onclick="initializeBookPlan(\''+book+'\')">검색초기화</button></span>'
+      +'<span class="bookPlanActions"><button class="'+(ready?'completeReady':'')+'" onclick="completeBookPlan(\''+book+'\')">완료</button><button onclick="resetBookPlan(\''+book+'\')">리셋</button><button onclick="initializeBookPlan(\''+book+'\')">권별초기화</button></span>'
       +'</div><div class="planChapGrid"></div>';
     var grid=area.querySelector('.planChapGrid');
     var drag=false, dragValue=false;
@@ -5995,7 +5995,7 @@ function resetMemoSearch(){
       +'<span class="bookDoneState">'+done+'/'+total+'장</span>'
       +'<span class="bookReadCount">'+count+'독</span>'
       +'<span class="bookPlanNavBtns"><button class="bookNavBtn" '+(prev?'':'disabled')+' onclick="movePlanBook(\''+book+'\',-1)">《 이전</button><button class="bookNavBtn" '+(next?'':'disabled')+' onclick="movePlanBook(\''+book+'\',1)">다음 》</button></span>'
-      +'<span class="bookPlanActions"><button class="'+(ready?'completeReady':'')+'" onclick="completeBookPlan(\''+book+'\')">완료</button><button onclick="resetBookPlan(\''+book+'\')">리셋</button><button onclick="initializeBookPlan(\''+book+'\')">검색초기화</button></span>'
+      +'<span class="bookPlanActions"><button class="'+(ready?'completeReady':'')+'" onclick="completeBookPlan(\''+book+'\')">완료</button><button onclick="resetBookPlan(\''+book+'\')">리셋</button><button onclick="initializeBookPlan(\''+book+'\')">권별초기화</button></span>'
       +'</div><div class="planChapGrid"></div>';
     var grid=area.querySelector('.planChapGrid');
     var drag=false, dragValue=false;
@@ -6325,7 +6325,7 @@ function resetMemoSearch(){
 </script>
 
 
-<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.3.0</div>
+<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.3.1</div>
 
 
 
