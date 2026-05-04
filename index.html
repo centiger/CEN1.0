@@ -2259,9 +2259,9 @@ function adjustLine(n) { settings.lineHeight = Math.max(1.2, Math.min(2.4, +(Num
 function adjustGap(n) { settings.verseGap = Math.max(4, Math.min(36, Number(settings.verseGap || 14) + n)); applySettings(); }
 function setFontColor(c) { settings.color = c; applySettings(); }
 
-async function openHymnFromSettings() { closeSettings(); await loadHymns(); document.getElementById('hymnPanel').style.display='flex'; renderHymns(hymnData.slice(0,60)); }
+async function openHymnFromSettings() { closeSettings(); await loadHymns(); document.getElementById('hymnPanel').style.display='flex'; renderHymns(hymnData.slice(0)); }
 function searchHymn() { const q=document.getElementById('hymnInput').value.trim(); renderHymns(hymnData.filter(h=>String(h.number).includes(q)||h.title.includes(q)).slice(0,150)); }
-function renderHymns(list) { const r=document.getElementById('hymnResult'); r.innerHTML=''; list.forEach(h=>{ const d=document.createElement('div'); d.className='hymnItem'; d.innerHTML=`<b>${h.number}. ${h.title}</b>`; d.onclick=()=>{ r.innerHTML=`<div class="hymnItem" onclick="renderHymns(hymnData.slice(0,60))">← 목록</div><h3>${h.number}. ${h.title}</h3><pre>${escapeHtml(h.lyrics)}</pre>`; }; r.appendChild(d); }); }
+function renderHymns(list) { const r=document.getElementById('hymnResult'); r.innerHTML=''; list.forEach(h=>{ const d=document.createElement('div'); d.className='hymnItem'; d.innerHTML=`<b>${h.number}. ${h.title}</b>`; d.onclick=()=>{ r.innerHTML=`<div class="hymnItem" onclick="renderHymns(hymnData.slice(0))">← 목록</div><h3>${h.number}. ${h.title}</h3><pre>${escapeHtml(h.lyrics)}</pre>`; }; r.appendChild(d); }); }
 
 function openSearch(e) { e.stopPropagation(); document.getElementById('searchPanel').style.display='flex'; }
 async function searchBible() {
@@ -6265,7 +6265,7 @@ function resetMemoSearch(){
 </script>
 
 
-<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.2.7</div>
+<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.2.8</div>
 
 
 
@@ -6498,6 +6498,55 @@ function resetMemoSearch(){
     setTimeout(() => forceDirect(bookName), 160);
     setTimeout(() => forceDirect(bookName), 360);
   }, true);
+})();
+</script>
+
+
+<script id="cen-hymn-full-list-fix">
+(function(){
+  function txt(el){ return (el && (el.innerText || el.textContent) || "").trim(); }
+
+  function onHymnScreen(){
+    return Array.from(document.querySelectorAll("button,a,div,span,h1,h2,h3"))
+      .some(function(el){ return /찬송가/.test(txt(el)) && el.getClientRects().length; });
+  }
+
+  function fixHymnList(){
+    if(!onHymnScreen()) return;
+
+    // 숨김 처리된 찬송가 항목 표시
+    document.querySelectorAll("[data-hymn-no], [data-hymn], .hymn-item, .hymnListItem, .hymn-row, .song-item, .worship-item").forEach(function(el){
+      el.hidden = false;
+      el.style.display = "";
+      el.style.visibility = "visible";
+      el.style.opacity = "";
+    });
+
+    // 60개만 보이게 컨테이너가 잘린 경우 스크롤 가능하게 보정
+    document.querySelectorAll("[id*=hymn], [class*=hymn], [id*=Hymn], [class*=Hymn]").forEach(function(el){
+      el.style.maxHeight = "";
+      el.style.overflowY = "auto";
+    });
+
+    // 전역 렌더 함수가 있으면 전체 렌더링 유도
+    ["renderHymnList","renderHymns","showHymnList","loadHymns"].forEach(function(fn){
+      try{
+        if(typeof window[fn] === "function") window[fn]();
+      }catch(e){}
+    });
+  }
+
+  document.addEventListener("click", function(e){
+    if(/찬송가/.test(txt(e.target))){
+      setTimeout(fixHymnList, 80);
+      setTimeout(fixHymnList, 250);
+      setTimeout(fixHymnList, 700);
+    }
+  }, true);
+
+  document.addEventListener("DOMContentLoaded", function(){
+    setTimeout(fixHymnList, 400);
+  });
 })();
 </script>
 
