@@ -6800,7 +6800,7 @@ function resetMemoSearch(){
 </script>
 
 
-<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.3.9</div>
+<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.4.0</div>
 
 
 
@@ -6950,6 +6950,76 @@ function resetMemoSearch(){
 
 
 
+
+
+<style id="v140-reading-plan-overall-scroll-fix">
+/* v1.4.0: 성경읽기표 전체보기 화면을 독립 스크롤 영역으로 고정 */
+#readingPlan.cenPlanAllScroll{
+  overflow:hidden !important;
+}
+#readingPlan.cenPlanAllScroll #planContent{
+  height:calc(100dvh - 92px) !important;
+  max-height:none !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior:contain !important;
+  box-sizing:border-box !important;
+  padding-bottom:calc(46px + env(safe-area-inset-bottom)) !important;
+  scrollbar-width:thin !important;
+  scrollbar-color:rgba(109,79,49,.32) transparent !important;
+  touch-action:pan-y !important;
+}
+#readingPlan.cenPlanAllScroll #planContent::-webkit-scrollbar{
+  width:8px !important;
+}
+#readingPlan.cenPlanAllScroll #planContent::-webkit-scrollbar-track{
+  background:transparent !important;
+}
+#readingPlan.cenPlanAllScroll #planContent::-webkit-scrollbar-thumb{
+  background:rgba(109,79,49,.30) !important;
+  border-radius:999px !important;
+}
+#readingPlan.cenPlanAllScroll .overallGrid{
+  padding-bottom:28px !important;
+}
+</style>
+<script id="v140-reading-plan-overall-scroll-fix-script">
+(function(){
+  function plan(){ return document.getElementById('readingPlan'); }
+  function pc(){ return document.getElementById('planContent'); }
+  function setAllMode(){
+    var p=plan(); if(p) p.classList.add('cenPlanAllScroll');
+    var c=pc(); if(c) c.scrollTop=0;
+  }
+  function setDetailMode(){
+    var p=plan(); if(p) p.classList.remove('cenPlanAllScroll');
+  }
+  function hook(){
+    if(typeof window.showPlanAll === 'function' && !window.showPlanAll.__cenV140OverallScroll){
+      var baseAll=window.showPlanAll;
+      window.showPlanAll=function(){
+        var ret=baseAll.apply(this,arguments);
+        setTimeout(setAllMode,0);
+        return ret;
+      };
+      window.showPlanAll.__cenV140OverallScroll=true;
+    }
+    if(typeof window.showPlanBook === 'function' && !window.showPlanBook.__cenV140OverallScroll){
+      var baseBook=window.showPlanBook;
+      window.showPlanBook=function(){
+        setDetailMode();
+        return baseBook.apply(this,arguments);
+      };
+      window.showPlanBook.__cenV140OverallScroll=true;
+    }
+    var c=pc();
+    if(c && c.querySelector('.overallGrid')) setAllMode();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',hook); else hook();
+  window.addEventListener('resize',function(){ var c=pc(); if(c && c.querySelector('.overallGrid')) setAllMode(); });
+})();
+</script>
 
 </body>
 </html>
