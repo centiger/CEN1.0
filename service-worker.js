@@ -1,13 +1,10 @@
-const CACHE_NAME = "cen-bible-v1.4.1-esv-exit-green-exit-brown-oneline-export-cen-folder-final-guide-export";
+const CACHE_NAME = "cen-bible-v1.4.1";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./service-worker.js",
   "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icon-192.png",
-  "./icon-512.png"
+  "./icons/icon-512.png"
 ];
 
 self.addEventListener("install", event => {
