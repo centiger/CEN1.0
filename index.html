@@ -1594,6 +1594,33 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
 })();
 </script>
 
+
+<style id="cen-hymn-scroll-style">
+#hymnPanel .panel {
+  display:flex;
+  flex-direction:column;
+  max-height:88vh;
+}
+#hymnResult.hymnScrollList {
+  margin-top:8px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  max-height:calc(88vh - 145px);
+  padding-right:4px;
+  border-top:1px solid #eee0cc;
+}
+#hymnResult.hymnScrollList::-webkit-scrollbar {
+  width:7px;
+}
+#hymnResult.hymnScrollList::-webkit-scrollbar-thumb {
+  background:rgba(80,60,40,.28);
+  border-radius:999px;
+}
+#hymnResult .hymnItem {
+  cursor:pointer;
+}
+</style>
+
 </head>
 <body>
 <div id="installTip">홈 화면에 추가하면 주소창이 줄어들어 앱처럼 사용할 수 있습니다.<button onclick="hideInstallTip()">닫기</button></div>
@@ -2006,7 +2033,14 @@ function buildBookModal() {
 }
 function bookButton(b) {
   const btn=document.createElement('button'); btn.textContent=b;
-  btn.onclick=async()=>{ state.book=b; state.chap='1'; saveSlots(); closeModal('bookModal'); await loadChapter(true); };
+  btn.onclick=()=>{ 
+    state.book=b; 
+    state.chap='1'; 
+    saveSlots(); 
+    closeModal('bookModal'); 
+    renderChapterModal(); 
+    document.getElementById('chapterModal').style.display='flex'; 
+  };
   return btn;
 }
 function buildVersionModal() {
@@ -2259,9 +2293,35 @@ function adjustLine(n) { settings.lineHeight = Math.max(1.2, Math.min(2.4, +(Num
 function adjustGap(n) { settings.verseGap = Math.max(4, Math.min(36, Number(settings.verseGap || 14) + n)); applySettings(); }
 function setFontColor(c) { settings.color = c; applySettings(); }
 
-async function openHymnFromSettings() { closeSettings(); await loadHymns(); document.getElementById('hymnPanel').style.display='flex'; renderHymns(hymnData.slice(0)); }
-function searchHymn() { const q=document.getElementById('hymnInput').value.trim(); renderHymns(hymnData.filter(h=>String(h.number).includes(q)||h.title.includes(q)).slice(0,150)); }
-function renderHymns(list) { const r=document.getElementById('hymnResult'); r.innerHTML=''; list.forEach(h=>{ const d=document.createElement('div'); d.className='hymnItem'; d.innerHTML=`<b>${h.number}. ${h.title}</b>`; d.onclick=()=>{ r.innerHTML=`<div class="hymnItem" onclick="renderHymns(hymnData.slice(0))">← 목록</div><h3>${h.number}. ${h.title}</h3><pre>${escapeHtml(h.lyrics)}</pre>`; }; r.appendChild(d); }); }
+async function openHymnFromSettings() { 
+  closeSettings(); 
+  await loadHymns(); 
+  document.getElementById('hymnPanel').style.display='flex'; 
+  const input=document.getElementById('hymnInput');
+  if(input) input.value='';
+  renderHymns(hymnData.slice(0)); 
+}
+function searchHymn() { 
+  const q=document.getElementById('hymnInput').value.trim(); 
+  const list = q ? hymnData.filter(h=>String(h.number).padStart(3,'0').includes(q)||String(h.number).includes(q)||h.title.includes(q)) : hymnData.slice(0);
+  renderHymns(list); 
+}
+function renderHymns(list) { 
+  const r=document.getElementById('hymnResult'); 
+  r.innerHTML=''; 
+  r.classList.add('hymnScrollList');
+  list.forEach(h=>{ 
+    const d=document.createElement('div'); 
+    d.className='hymnItem'; 
+    const no=String(h.number).padStart(3,'0');
+    d.innerHTML=`<b>${no}. ${h.title}</b>`; 
+    d.onclick=()=>{ 
+      r.classList.remove('hymnScrollList');
+      r.innerHTML=`<div class="hymnItem" onclick="renderHymns(hymnData.slice(0))">← 목록</div><h3>${no}. ${h.title}</h3><pre>${escapeHtml(h.lyrics)}</pre>`; 
+    }; 
+    r.appendChild(d); 
+  }); 
+}
 
 function openSearch(e) { e.stopPropagation(); document.getElementById('searchPanel').style.display='flex'; }
 async function searchBible() {
@@ -6265,7 +6325,7 @@ function resetMemoSearch(){
 </script>
 
 
-<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.2.9</div>
+<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.3.0</div>
 
 
 
@@ -6411,165 +6471,10 @@ function resetMemoSearch(){
 
 
 
-<script id="cen-direct-chapter-select-fix">
-(function(){
-  const BOOKS = [
-    "창세기","출애굽기","레위기","민수기","신명기","여호수아","사사기","룻기","사무엘상","사무엘하",
-    "열왕기상","열왕기하","역대상","역대하","에스라","느헤미야","에스더","욥기","시편","잠언",
-    "전도서","아가","이사야","예레미야","예레미야애가","에스겔","다니엘","호세아","요엘","아모스",
-    "오바댜","요나","미가","나훔","하박국","스바냐","학개","스가랴","말라기","마태복음",
-    "마가복음","누가복음","요한복음","사도행전","로마서","고린도전서","고린도후서","갈라디아서","에베소서","빌립보서",
-    "골로새서","데살로니가전서","데살로니가후서","디모데전서","디모데후서","디도서","빌레몬서","히브리서","야고보서","베드로전서",
-    "베드로후서","요한일서","요한이서","요한삼서","유다서","요한계시록"
-  ];
-
-  function cleanText(el){
-    return (el && (el.innerText || el.textContent) || "").replace(/\s+/g,"").trim();
-  }
-
-  function isVisible(el){
-    if(!el) return false;
-    const r = el.getBoundingClientRect();
-    const s = window.getComputedStyle(el);
-    return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden";
-  }
-
-  function findBook(el){
-    let cur = el;
-    for(let i=0; cur && i<8; i++, cur=cur.parentElement){
-      const t = cleanText(cur);
-      for(const b of BOOKS){
-        if(t === b || t.startsWith(b+"0/") || t.startsWith(b+"1/") || t.includes(b+"선택")) return b;
-      }
-    }
-    return "";
-  }
-
-  function clickIfText(patterns){
-    const els = Array.from(document.querySelectorAll("button,a,[role='button'],li,div,span"));
-    for(const el of els){
-      if(!isVisible(el)) continue;
-      const t = cleanText(el);
-      if(!t) continue;
-      if(patterns.some(p => p.test(t))){
-        try{ el.click(); return true; }catch(e){}
-      }
-    }
-    return false;
-  }
-
-  function callFns(book){
-    const fns = [
-      "showChapterSelect","openChapterSelect","openChapterList","showChapterList",
-      "showBookChapters","openBookChapters","selectBook","selectBibleBook",
-      "goBook","openBibleBook","showBibleBook","renderChapters","renderChapterGrid"
-    ];
-    for(const fn of fns){
-      try{
-        if(typeof window[fn] === "function"){
-          window[fn](book);
-          return true;
-        }
-      }catch(e){}
-    }
-    return false;
-  }
-
-  function hasChapterGrid(){
-    let count = 0;
-    document.querySelectorAll("button,a,div,span").forEach(el=>{
-      if(isVisible(el) && /^(1|2|3|4|5|6|7|8|9|10)장?$/.test(cleanText(el))) count++;
-    });
-    return count >= 3;
-  }
-
-  function directToChapters(book){
-    if(hasChapterGrid()) return true;
-    if(callFns(book)) return true;
-
-    // 중간 화면의 버튼을 자동으로 눌러 장 선택 화면으로 보냄
-    if(clickIfText([/^전체장$/, /^장선택$/, /^전체장선택$/, /장선택하기/, /전체장보기/, /^전체보기$/])) return true;
-    return false;
-  }
-
-  document.addEventListener("click", function(e){
-    const book = findBook(e.target);
-    if(!book) return;
-
-    setTimeout(()=>directToChapters(book), 30);
-    setTimeout(()=>directToChapters(book), 120);
-    setTimeout(()=>directToChapters(book), 300);
-    setTimeout(()=>directToChapters(book), 650);
-  }, true);
-})();
-</script>
 
 
-<script id="cen-hymn-full-list-fix">
-(function(){
-  function text(el){ return (el && (el.innerText || el.textContent) || "").trim(); }
-  function visible(el){
-    if(!el) return false;
-    const r = el.getBoundingClientRect();
-    const s = window.getComputedStyle(el);
-    return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden";
-  }
 
-  function isHymnArea(){
-    return Array.from(document.querySelectorAll("button,a,div,span,h1,h2,h3"))
-      .some(el => visible(el) && /찬송가/.test(text(el)));
-  }
 
-  function styleHymnList(){
-    if(!isHymnArea()) return;
-
-    // 검색 입력창/검색 버튼은 그대로 둔다. 목록 영역만 스크롤 가능하게 보정.
-    const candidates = Array.from(document.querySelectorAll(
-      "[id*=hymn], [class*=hymn], [id*=Hymn], [class*=Hymn], [id*=song], [class*=song], [id*=찬송], [class*=찬송]"
-    ));
-
-    candidates.forEach(function(el){
-      const t = text(el);
-      const hasRows = el.querySelectorAll("li, button, .item, .row, div").length >= 20;
-      const looksList = hasRows || /찬송가/.test(t);
-      if(!looksList) return;
-
-      el.style.overflowY = "auto";
-      el.style.webkitOverflowScrolling = "touch";
-      el.style.maxHeight = "calc(100vh - 230px)";
-      el.style.paddingBottom = "12px";
-    });
-
-    // 숨겨진 찬송가 항목이 있으면 표시
-    document.querySelectorAll("[data-hymn-no], [data-hymn], .hymn-item, .hymnListItem, .hymn-row, .song-item, .worship-item").forEach(function(el){
-      el.hidden = false;
-      el.style.display = "";
-      el.style.visibility = "visible";
-      el.style.opacity = "";
-    });
-
-    // 기존이 60개 제한 렌더면 전역 렌더 함수 재실행 시도
-    ["renderHymnList","renderHymns","showHymnList","loadHymns","renderSongs"].forEach(function(fn){
-      try{
-        if(typeof window[fn] === "function") window[fn]({limit: Infinity, showAll: true});
-      }catch(e){}
-    });
-  }
-
-  document.addEventListener("click", function(e){
-    if(/찬송가/.test(text(e.target))){
-      setTimeout(styleHymnList, 80);
-      setTimeout(styleHymnList, 250);
-      setTimeout(styleHymnList, 700);
-      setTimeout(styleHymnList, 1200);
-    }
-  }, true);
-
-  document.addEventListener("DOMContentLoaded", function(){
-    setTimeout(styleHymnList, 400);
-  });
-})();
-</script>
 
 </body>
 </html>
