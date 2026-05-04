@@ -1576,6 +1576,7 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
 }
 </style>
 
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body>
 <div id="installTip">홈 화면에 추가하면 주소창이 줄어들어 앱처럼 사용할 수 있습니다.<button onclick="hideInstallTip()">닫기</button></div>
@@ -6248,20 +6249,18 @@ function resetMemoSearch(){
 
 
 <div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">
-v1.2.0
+v1.2.1
 </div>
 
 
 <script id="cen-pwa-final-script">
 (function() {
-  var APP_VERSION = "1.2.0";
+  var APP_VERSION = "1.2.1";
   window.CEN_APP_VERSION = APP_VERSION;
 
-  // PWA 자동 업데이트: 앱 실행 시 새 service-worker 확인
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function() {
       navigator.serviceWorker.register("./service-worker.js").then(function(reg) {
-        // 실행할 때마다 서버에 새 버전 확인
         try { reg.update(); } catch(e) {}
 
         reg.addEventListener("updatefound", function() {
@@ -6269,7 +6268,6 @@ v1.2.0
           if (!nw) return;
           nw.addEventListener("statechange", function() {
             if (nw.state === "installed" && navigator.serviceWorker.controller) {
-              // 새 버전 설치 완료 즉시 새 service worker에게 활성화 지시
               try { nw.postMessage({ type: "SKIP_WAITING" }); } catch(e) {}
             }
           });
@@ -6279,7 +6277,6 @@ v1.2.0
       });
     });
 
-    // 새 service worker가 컨트롤을 잡으면 자동 새로고침
     var refreshing = false;
     navigator.serviceWorker.addEventListener("controllerchange", function() {
       if (refreshing) return;
@@ -6288,8 +6285,6 @@ v1.2.0
     });
   }
 
-  // 뒤로가기 종료 보강
-  // 안드로이드 PWA에서 첫 뒤로가기는 종료 확인, 취소 시 앱 유지
   function isStandalone() {
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   }
@@ -6301,13 +6296,10 @@ v1.2.0
     }
   } catch(e) {}
 
-  window.addEventListener("popstate", function(e) {
-    if (!isStandalone()) {
-      return;
-    }
+  window.addEventListener("popstate", function() {
+    if (!isStandalone()) return;
     var ok = confirm("앱을 종료하시겠습니까?");
     if (ok) {
-      // 브라우저/PWA 정책상 window.close가 막히면 이전 히스토리로 빠져나가며 종료처럼 동작
       try { window.close(); } catch(err) {}
       setTimeout(function() {
         try { history.go(-2); } catch(err) { history.back(); }

@@ -1,8 +1,10 @@
-const CACHE_NAME = "cen-bible-v1.2.0";
+const CACHE_NAME = "cen-bible-v1.2.1";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.json"
+  "./manifest.json",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
 self.addEventListener("install", event => {
@@ -26,7 +28,6 @@ self.addEventListener("message", event => {
   }
 });
 
-// HTML은 네트워크 우선: 수정본이 있으면 즉시 받고, 오프라인이면 캐시 사용
 self.addEventListener("fetch", event => {
   const req = event.request;
   if (req.method !== "GET") return;
