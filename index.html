@@ -6248,17 +6248,14 @@ function resetMemoSearch(){
 </script>
 
 
-<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">
-v1.2.2
-</div>
+<div id="cenVersionBadge" style="position:fixed;right:8px;bottom:6px;z-index:999999;font-size:11px;line-height:1;color:rgba(60,45,30,.48);pointer-events:none;">v1.2.3</div>
 
 
 <script id="cen-pwa-final-script">
 (function() {
-  var APP_VERSION = "1.2.2";
+  var APP_VERSION = "1.2.3";
   window.CEN_APP_VERSION = APP_VERSION;
 
-  // PWA 자동 업데이트
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function() {
       navigator.serviceWorker.register("./service-worker.js").then(function(reg) {
@@ -6272,11 +6269,8 @@ v1.2.2
             }
           });
         });
-      }).catch(function(err) {
-        console.warn("ServiceWorker registration failed:", err);
       });
     });
-
     var refreshing = false;
     navigator.serviceWorker.addEventListener("controllerchange", function() {
       if (refreshing) return;
@@ -6285,28 +6279,44 @@ v1.2.2
     });
   }
 
-  // 뒤로가기 두 번 종료: 확인창 없음
   function isStandalone() {
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   }
 
-  function showBackToast() {
-    var toast = document.getElementById("cenBackToast");
-    if (!toast) {
-      toast = document.createElement("div");
-      toast.id = "cenBackToast";
-      toast.textContent = "한 번 더 누르면 종료됩니다";
-      toast.style.cssText = "position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:999999;background:rgba(40,32,25,.86);color:#fff;padding:10px 14px;border-radius:999px;font-size:14px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.18);opacity:0;transition:opacity .15s ease;pointer-events:none;white-space:nowrap;";
-      document.body.appendChild(toast);
-    }
-    toast.style.opacity = "1";
-    clearTimeout(window.__cenBackToastTimer);
-    window.__cenBackToastTimer = setTimeout(function() {
-      toast.style.opacity = "0";
-    }, 1400);
+  var lastBackTime = 0;
+
+  function removeExitBox() {
+    var box = document.getElementById("cenExitBox");
+    if (box) box.remove();
   }
 
-  var lastBackTime = 0;
+  function showExitBox() {
+    removeExitBox();
+    var wrap = document.createElement("div");
+    wrap.id = "cenExitBox";
+    wrap.style.cssText = "position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:999999;background:rgba(40,32,25,.94);color:#fff;padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);font-size:14px;line-height:1.35;min-width:250px;text-align:center;";
+    var msg = document.createElement("div");
+    msg.textContent = "한 번 더 뒤로가기를 누르면 종료됩니다.";
+    msg.style.cssText = "font-weight:800;margin-bottom:10px;";
+    var cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = "취소";
+    cancel.style.cssText = "border:0;border-radius:999px;padding:7px 16px;background:#fff;color:#2b2118;font-weight:800;";
+    cancel.onclick = function() {
+      lastBackTime = 0;
+      removeExitBox();
+      try { history.pushState({ cenBackGuard: true }, "", location.href); } catch(e) {}
+    };
+    wrap.appendChild(msg);
+    wrap.appendChild(cancel);
+    document.body.appendChild(wrap);
+    clearTimeout(window.__cenExitBoxTimer);
+    window.__cenExitBoxTimer = setTimeout(function() {
+      lastBackTime = 0;
+      removeExitBox();
+    }, 2500);
+  }
+
   try {
     history.replaceState({ cenBase: true }, "", location.href);
     history.pushState({ cenBackGuard: true }, "", location.href);
@@ -6314,24 +6324,16 @@ v1.2.2
 
   window.addEventListener("popstate", function() {
     if (!isStandalone()) return;
-
     var now = Date.now();
-    if (now - lastBackTime < 1500) {
-      // 두 번째 뒤로가기: 앱 종료 시도
+    if (now - lastBackTime < 2500) {
+      removeExitBox();
       try { history.go(-2); } catch(e) { history.back(); }
-      setTimeout(function() {
-        try { window.close(); } catch(e) {}
-      }, 30);
+      setTimeout(function() { try { window.close(); } catch(e) {} }, 40);
       return;
     }
-
     lastBackTime = now;
-    showBackToast();
-
-    // 첫 번째 뒤로가기는 앱에 머물도록 히스토리 가드 복구
-    try {
-      history.pushState({ cenBackGuard: true }, "", location.href);
-    } catch(e) {}
+    showExitBox();
+    try { history.pushState({ cenBackGuard: true }, "", location.href); } catch(e) {}
   });
 })();
 </script>
@@ -6355,6 +6357,37 @@ v1.2.2
         active.blur();
       }
     }, 80);
+  }, true);
+})();
+</script>
+
+
+
+
+
+<script id="cen-direct-chapter-select-fix">
+(function(){
+  function t(el){ return (el && (el.innerText || el.textContent) || "").trim(); }
+  function isBookName(s){
+    return /^(창세기|출애굽기|레위기|민수기|신명기|여호수아|사사기|룻기|사무엘상|사무엘하|열왕기상|열왕기하|역대상|역대하|에스라|느헤미야|에스더|욥기|시편|잠언|전도서|아가|이사야|예레미야|예레미야애가|에스겔|다니엘|호세아|요엘|아모스|오바댜|요나|미가|나훔|하박국|스바냐|학개|스가랴|말라기|마태복음|마가복음|누가복음|요한복음|사도행전|로마서|고린도전서|고린도후서|갈라디아서|에베소서|빌립보서|골로새서|데살로니가전서|데살로니가후서|디모데전서|디모데후서|디도서|빌레몬서|히브리서|야고보서|베드로전서|베드로후서|요한일서|요한이서|요한삼서|유다서|요한계시록)$/.test(s);
+  }
+  function goDirect(){
+    var els = Array.from(document.querySelectorAll("button,a,div,span,li"));
+    for(var i=0;i<els.length;i++){
+      var s=t(els[i]);
+      if(/전체\s*장|장\s*선택|전체장/.test(s)){
+        try{ els[i].click(); return true; }catch(e){}
+      }
+    }
+    return false;
+  }
+  document.addEventListener("click", function(e){
+    var el = e.target.closest ? e.target.closest("button,a,div,li,span") : e.target;
+    if(!el) return;
+    if(!isBookName(t(el))) return;
+    setTimeout(goDirect, 60);
+    setTimeout(goDirect, 180);
+    setTimeout(goDirect, 350);
   }, true);
 })();
 </script>
