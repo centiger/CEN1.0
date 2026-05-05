@@ -218,12 +218,12 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
 }
 #exitConfirmDialog .exitBox{
   width:min(300px,82vw);
-  background:rgba(60,45,31,.96);
-  border:1px solid rgba(255,250,242,.24);
+  background:#fffaf2;
+  border:1px solid #d8c3a5;
   border-radius:16px;
   box-shadow:0 10px 28px rgba(0,0,0,.2);
   padding:18px 16px 14px;
-  color:#fffaf2;
+  color:#3e2f1c;
   font-family:'Nanum Gothic',sans-serif;
   text-align:center;
 }
@@ -238,9 +238,9 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
 }
 #exitConfirmDialog .exitBtns button{
   flex:1;
-  border:1px solid rgba(255,250,242,.34);
-  background:#fffaf2;
-  color:#3e2f1c;
+  border:1px solid #d8c3a5;
+  background:#fff;
+  color:#5a4633;
   border-radius:10px;
   padding:9px 0;
   font-size:14px;
@@ -2053,7 +2053,7 @@ body.scoreViewerOpen{
       <ul class="guideList">
         <li><b>내보내기</b>를 누르면 휴대폰 내부저장공간에서 선택한 위치에 <b>CEN Bible</b> 폴더를 만들고 백업 파일을 저장합니다.</li>
         <li>Android Chrome 보안정책상 처음 1회는 저장 위치 선택창이 뜰 수 있습니다. 이후에는 가능한 한 같은 위치의 <b>CEN Bible</b> 폴더를 사용합니다.</li>
-        <li><b>불러오기</b>를 누르면 선택한 내부저장공간의 <b>CEN Bible</b> 폴더에서 가장 최근 백업 파일을 찾아 불러옵니다.</li>
+        <li><b>불러오기</b>를 누르면 선택한 내부저장공간의 <b>CEN Bible</b> 폴더를 열고, 표시되는 백업 파일 목록에서 원하는 파일을 선택해 불러옵니다.</li>
         <li><b>CEN Bible</b> 폴더나 백업 파일이 없으면 “CEN Bible 폴더에 불러오기 파일이 없습니다.”라는 안내가 표시됩니다.</li>
       </ul>
     </div>
@@ -6953,7 +6953,7 @@ function resetMemoSearch(){
     wrap.id = "cenExitBox";
     wrap.style.cssText =
       "position:fixed;left:50%;bottom:72px;transform:translateX(-50%);" +
-      "z-index:999999;background:rgba(22,110,60,.82);color:#fff;" +
+      "z-index:999999;background:rgba(60,45,31,.86);color:#fff;" +
       "padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);" +
       "font-size:14px;line-height:1.2;min-width:300px;text-align:center;white-space:nowrap;";
 
@@ -7034,7 +7034,7 @@ function resetMemoSearch(){
   max-width:560px !important;
   min-width:0 !important;
   box-sizing:border-box !important;
-  background:rgba(22,110,60,.82) !important;
+  background:rgba(60,45,31,.86) !important;
   white-space:nowrap !important;
 }
 #cenExitBox div{
@@ -7152,7 +7152,7 @@ function resetMemoSearch(){
       notify('저장소 직접 저장이 제한되어 다운로드 방식으로 저장했습니다.');
     }
   };
-  async function readNewestBackupFromFolder(folder){
+  async function listBackupFilesFromFolder(folder){
     const list = [];
     for await (const [name, handle] of folder.entries()){
       if(handle.kind === 'file' && /cen-bible-backup-.*\.json$/i.test(name)){
@@ -7161,7 +7161,48 @@ function resetMemoSearch(){
       }
     }
     list.sort((a,b)=>b.time-a.time || b.name.localeCompare(a.name));
-    return list[0] ? list[0].file : null;
+    return list;
+  }
+  function formatBackupTime(ms){
+    if(!ms) return '';
+    const d = new Date(ms);
+    const z = n => String(n).padStart(2,'0');
+    return d.getFullYear()+'.'+z(d.getMonth()+1)+'.'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes());
+  }
+  function chooseBackupFile(list){
+    return new Promise(resolve=>{
+      const old = document.getElementById('cenBackupPicker');
+      if(old) old.remove();
+      const overlay = document.createElement('div');
+      overlay.id = 'cenBackupPicker';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:1000000;background:rgba(25,18,10,.34);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+      const panel = document.createElement('div');
+      panel.style.cssText = 'width:min(92vw,520px);max-height:72vh;overflow:auto;background:#fffaf2;border-radius:18px;padding:14px;box-shadow:0 12px 34px rgba(0,0,0,.28);font-family:var(--uiFont, sans-serif);color:#3e2f1c;';
+      const head = document.createElement('div');
+      head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;';
+      const title = document.createElement('div');
+      title.textContent = 'CEN Bible 백업 파일 선택';
+      title.style.cssText = 'font-size:17px;font-weight:900;color:#5a3f28;';
+      const close = document.createElement('button');
+      close.type = 'button'; close.textContent = '×';
+      close.style.cssText = 'width:38px;height:38px;border:0;border-radius:14px;background:#f0e3d1;color:#5a3f28;font-size:24px;line-height:1;';
+      close.onclick = ()=>{ overlay.remove(); resolve(null); };
+      head.appendChild(title); head.appendChild(close); panel.appendChild(head);
+      const note = document.createElement('div');
+      note.textContent = '불러올 파일을 선택하세요.';
+      note.style.cssText = 'font-size:13px;color:#6d5743;margin-bottom:10px;';
+      panel.appendChild(note);
+      list.forEach(item=>{
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.style.cssText = 'width:100%;display:block;text-align:left;margin:7px 0;padding:11px 12px;border:1px solid #e1cfb7;border-radius:13px;background:#fffdf8;color:#3e2f1c;font-size:14px;line-height:1.35;';
+        btn.innerHTML = '<b style="display:block;font-size:14px;margin-bottom:3px;">'+item.name.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</b><span style="font-size:12px;color:#7a6755;">'+formatBackupTime(item.time)+'</span>';
+        btn.onclick = ()=>{ overlay.remove(); resolve(item.file); };
+        panel.appendChild(btn);
+      });
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+    });
   }
   async function applyBackupFile(file){
     const text = await file.text();
@@ -7182,8 +7223,10 @@ function resetMemoSearch(){
         let folder;
         try { folder = await getCenFolder('read', false); }
         catch(noFolder){ notify('CEN Bible 폴더에 불러오기 파일이 없습니다.'); return; }
-        const file = await readNewestBackupFromFolder(folder);
-        if(!file){ notify('CEN Bible 폴더에 불러오기 파일이 없습니다.'); return; }
+        const files = await listBackupFilesFromFolder(folder);
+        if(!files.length){ notify('CEN Bible 폴더에 불러오기 파일이 없습니다.'); return; }
+        const file = await chooseBackupFile(files);
+        if(!file) return;
         await applyBackupFile(file);
         return;
       }
