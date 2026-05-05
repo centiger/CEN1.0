@@ -102,6 +102,20 @@ button.icon { color:#5f5f5f; font-weight:800; background:transparent; border-col
 #selectToolbar button { width:auto; padding:5px 7px; font-size:12px; }
 #selectToolbar input[type="color"] { width:30px; height:30px; padding:0; border:1px solid #d9c5aa; border-radius:9px; background:#fffaf2; flex:0 0 auto; }
 .verse.highlighted { border-radius:8px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+/* v165 highlight selection visibility fix */
+.verse.highlighted.selected,
+.verse.selected[style*="background"] {
+  outline:2px solid rgba(92, 57, 24, .92) !important;
+  outline-offset:2px;
+  box-shadow:0 0 0 4px rgba(255,255,255,.72), 0 0 0 7px rgba(92,57,24,.26) !important;
+  border-radius:9px;
+}
+.verse.selected .vnum {
+  text-decoration:underline;
+  text-decoration-thickness:2px;
+  text-underline-offset:3px;
+}
+
 #toast { position:fixed; left:50%; bottom:82px; transform:translateX(-50%); z-index:200; background:#3c2d1f; color:white; border-radius:18px; padding:9px 14px; display:none; font-size:13px; }
 #readingPlan { position:fixed; inset:0; z-index:110; background:#fffaf2; display:none; overflow:auto; padding:12px 14px 30px; }
 .planTop { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
@@ -1961,6 +1975,28 @@ body.scoreViewerOpen{
 #guidePanel .guideMiniGrid span{font-size:16px!important;line-height:1.55!important;}
 #guidePanel .guideNote{font-size:16px!important;line-height:1.55!important;}
 </style>
+
+<style id="cen-v166-bible-left-align-highlight-only">
+/* v1.6.6: 성경본문 왼쪽정렬 복구 + 형광펜 선택 표시 보강 */
+#content .verse {
+  text-align:left !important;
+  text-justify:auto !important;
+  -webkit-text-align-last:auto !important;
+  text-align-last:auto !important;
+}
+#content .verse::after {
+  content:none !important;
+  display:none !important;
+  width:auto !important;
+}
+#content .verse.highlighted.selected,
+#content .verse.selected[style*="background"] {
+  outline:2px solid rgba(68, 39, 17, .95) !important;
+  outline-offset:2px !important;
+  box-shadow:inset 0 0 0 9999px rgba(82, 48, 20, .14), 0 0 0 4px rgba(255,255,255,.78), 0 0 0 7px rgba(68,39,17,.30) !important;
+  border-radius:9px !important;
+}
+</style>
 </head>
 <body>
 <div id="installTip">홈 화면에 추가하면 주소창이 줄어들어 앱처럼 사용할 수 있습니다.<button onclick="hideInstallTip()">닫기</button></div>
@@ -2576,18 +2612,36 @@ function addMemoToSelected(e) {
 
 function openHighlightPicker(e){
   e.stopPropagation();
-  const picker=document.getElementById('highlightPicker');
+  let picker=document.getElementById('highlightPicker');
   if(!picker) return;
-  picker.click();
-  picker.onchange=function(){
-    applyHighlightWithColor(picker.value);
-  }
-}
 
+  // v1.6.6: 같은 색상을 연속 선택해도 모바일 브라우저가 이전 값을 기억하지 않도록
+  // input 자체를 새로 갈아끼운 뒤 색상 선택창을 연다.
+  const freshPicker = picker.cloneNode(true);
+  freshPicker.value = '#ffffff';
+  picker.parentNode.replaceChild(freshPicker, picker);
+
+  freshPicker.onchange = function(){
+    applyHighlightWithColor(freshPicker.value || '#fff176');
+  };
+  freshPicker.oninput = function(){
+    applyHighlightWithColor(freshPicker.value || '#fff176');
+  };
+  freshPicker.click();
+}
 function applyHighlightWithColor(color){
   if(!selectedKeys.size) return;
-  selectedKeys.forEach(k=>{ highlights[k]=color; });
-  saveHighlights(); clearSelection(); loadChapter(false);
+  const safeColor = safeHighlightColor(color || '#fff176');
+  selectedKeys.forEach(k=>{ highlights[k]=safeColor; });
+  saveHighlights();
+  const picker=document.getElementById('highlightPicker');
+  if(picker) {
+    // 적용 후에도 다시 초기화하여 같은 색상 연속 적용을 보장한다.
+    picker.value = '#ffffff';
+    picker.onchange = null;
+    picker.oninput = null;
+  }
+  clearSelection(); loadChapter(false);
   toast('형광펜 적용');
 }
 
@@ -7957,7 +8011,7 @@ function resetMemoSearch(){
 
 
 <style id="cen-v157-final-request-fixes">
-/* v1.6.2: 검색 초기화 문구 고정, 교독문 손가락 이동/스크롤 복원, 사용가이드 제목 크기 조정 */
+/* v1.6.3: 검색 초기화 문구 고정, 교독문 손가락 이동/스크롤 복원, 사용가이드 제목 크기 조정 */
 #searchPanel .settingBtns button[onclick*="clearBibleSearch"]{white-space:nowrap!important;}
 #guidePanel .guideSection h4{
   font-size:12.5px!important;
@@ -8026,7 +8080,7 @@ function resetMemoSearch(){
 </style>
 <script id="cen-v157-final-request-fixes-js">
 (function(){
-  const VERSION='v1.6.2';
+  const VERSION='v1.6.3';
   function fixSearchButton(){
     const btns=document.querySelectorAll('#searchPanel button');
     btns.forEach(b=>{
@@ -8535,3 +8589,20 @@ function resetMemoSearch(){
 
 </body>
 </html>
+
+<style id="cen-v168-left-align-strict-final">
+/* CEN Bible v168: 성경본문 왼쪽정렬 최종 고정 - 형광펜 수정사항 유지 */
+#content, #content .verse {
+  text-align: left !important;
+  text-justify: auto !important;
+  -webkit-text-align-last: auto !important;
+  text-align-last: auto !important;
+  word-break: keep-all !important;
+  overflow-wrap: break-word !important;
+}
+#content .verse::after {
+  content: none !important;
+  display: none !important;
+  width: auto !important;
+}
+</style>
