@@ -2050,13 +2050,14 @@ body.scoreViewerOpen{
 
 
     <div class="guideSection"><h4><span class="guideNum">9</span> 데이터 내보내기·불러오기</h4>
-      <ul class="guideList">
-        <li><b>내보내기</b>를 누르면 백업 파일이 휴대폰의 <b>다운로드</b> 폴더에 저장됩니다.</li>
+      <ul>
+        <li><b>내보내기</b>를 누르면 최초 1회 저장 폴더 선택/권한 허용 창이 열립니다.</li>
+        <li>사용자가 허용하면 앱이 선택한 위치 안에 <b>CEN Bible</b> 폴더를 만들고, 백업파일을 그 폴더에 저장합니다.</li>
+        <li>이후 내보내기는 저장된 <b>CEN Bible</b> 폴더 권한을 확인한 뒤 같은 폴더에 바로 백업합니다.</li>
         <li>파일명은 <b>CEN_Bible_백업_날짜_시간.json</b> 형식으로 저장되어 날짜별 구분이 쉽습니다.</li>
-        <li><b>불러오기</b>를 누르면 앱이 <b>다운로드 폴더의 CEN Bible 백업파일</b>을 찾아 목록으로 보여줍니다. 최초 1회는 휴대폰 보안정책에 따라 다운로드 폴더 선택/권한 허용이 필요할 수 있습니다.</li>
-        <li>목록에서 원하는 날짜의 백업파일을 선택하면 데이터가 복원됩니다. 백업파일이 없으면 “다운로드 폴더에 CEN Bible 백업파일이 없습니다.”라는 안내가 표시됩니다.</li>
-        <li>목록에 백업이 없을 경우 “CEN Bible 백업 파일이 없습니다.”라고 안내하며, 필요하면 <b>직접 파일 선택</b>으로 다운로드 폴더의 백업파일을 선택할 수 있습니다.</li>
-        <li>Android/Chrome 보안정책상 PWA가 휴대폰 저장폴더를 무단으로 훑어보는 것은 제한됩니다. 따라서 <b>다운로드 저장 + 앱 내부 백업목록 + 직접 파일 선택</b> 방식으로 운영합니다.</li>
+        <li><b>불러오기</b>를 누르면 앱이 <b>CEN Bible</b> 폴더의 백업파일 목록을 대화창으로 보여줍니다.</li>
+        <li>목록에서 원하는 날짜의 백업파일을 선택하면 데이터가 복원됩니다. 백업파일이 없으면 <b>CEN Bible 폴더에 백업파일이 없습니다.</b>라고 안내합니다.</li>
+        <li>휴대폰 보안정책상 최초 1회는 반드시 사용자가 폴더 접근을 허용해야 합니다. 권한이 해제된 경우 다시 폴더를 선택해야 합니다.</li>
       </ul>
     </div>
 
@@ -7240,5 +7241,271 @@ function resetMemoSearch(){
   const badge=document.getElementById('cenVersionBadge'); if(badge) badge.textContent='v1.4.7';
 })();
 </script>
+
+
+<!-- CEN Bible v1.4.8 patch: reading plan full scroll + one-line backup dialog buttons -->
+<style id="cen-v148-reading-plan-scroll-style">
+/* 성경읽기표 전체보기: 화면에 일부만 잘리는 문제 방지 */
+#readingPlan{
+  overflow:hidden !important;
+  touch-action:auto !important;
+}
+#readingPlan .planTop,
+#readingPlan .planSwitch{
+  flex:0 0 auto !important;
+}
+#planContent{
+  height:calc(100dvh - 118px) !important;
+  max-height:calc(100dvh - 118px) !important;
+  overflow:auto !important;
+  -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior:contain !important;
+  touch-action:pan-x pan-y !important;
+  padding-bottom:36px !important;
+  box-sizing:border-box !important;
+}
+#planContent .overallGrid{
+  min-width:560px !important;
+  width:max-content !important;
+  display:grid !important;
+  grid-template-columns:repeat(4, minmax(126px, 1fr)) !important;
+  gap:7px !important;
+  padding-right:18px !important;
+  padding-bottom:26px !important;
+}
+#planContent::-webkit-scrollbar{
+  width:8px !important;
+  height:8px !important;
+}
+#planContent::-webkit-scrollbar-thumb{
+  background:rgba(90,61,39,.38) !important;
+  border-radius:999px !important;
+}
+#planContent::-webkit-scrollbar-track{
+  background:rgba(234,220,201,.45) !important;
+  border-radius:999px !important;
+}
+#planContent .cenReadingOverallScroll{
+  max-height:none !important;
+  overflow:visible !important;
+}
+@supports not (height:100dvh){
+  #planContent{height:calc(100vh - 118px) !important;max-height:calc(100vh - 118px) !important;}
+}
+@media(max-width:520px){
+  #planContent .overallGrid{
+    min-width:620px !important;
+    grid-template-columns:repeat(4, 145px) !important;
+  }
+}
+/* 백업 불러오기 대화창 하단 버튼: 두 줄 깨짐 방지 */
+#cenBackupDialog .foot{
+  grid-template-columns:1fr 1fr 1fr !important;
+}
+#cenBackupDialog .foot button{
+  white-space:nowrap !important;
+  word-break:keep-all !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  font-size:11px !important;
+  line-height:1.1 !important;
+  padding-left:4px !important;
+  padding-right:4px !important;
+}
+#cenBackupDialog .empty{
+  word-break:keep-all !important;
+}
+</style>
+<script id="cen-v148-reading-plan-scroll-script">
+(function(){
+  function applyPlanScroll(){
+    const rp=document.getElementById('readingPlan');
+    const pc=document.getElementById('planContent');
+    if(!rp || !pc) return;
+    rp.style.overflow='hidden';
+    pc.style.overflow='auto';
+    pc.style.webkitOverflowScrolling='touch';
+    pc.style.touchAction='pan-x pan-y';
+    pc.style.height='calc(100dvh - 118px)';
+    pc.style.maxHeight='calc(100dvh - 118px)';
+    const grid=pc.querySelector('.overallGrid');
+    if(grid){
+      grid.style.minWidth=(window.innerWidth<520?'620px':'560px');
+      grid.style.width='max-content';
+      grid.style.paddingBottom='26px';
+    }
+  }
+  const oldShowPlanAll=window.showPlanAll;
+  if(typeof oldShowPlanAll==='function' && !oldShowPlanAll.__cenV148Wrapped){
+    window.showPlanAll=function(){
+      const r=oldShowPlanAll.apply(this,arguments);
+      setTimeout(applyPlanScroll,0);
+      setTimeout(applyPlanScroll,120);
+      return r;
+    };
+    window.showPlanAll.__cenV148Wrapped=true;
+  }
+  document.addEventListener('click',function(e){
+    const t=(e.target&&(e.target.innerText||e.target.textContent)||'');
+    if(/성경읽기표|전체보기|권별보기/.test(t)){
+      setTimeout(applyPlanScroll,60);
+      setTimeout(applyPlanScroll,250);
+    }
+  },true);
+  window.addEventListener('resize',function(){setTimeout(applyPlanScroll,80);});
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){setTimeout(applyPlanScroll,300);});
+  else setTimeout(applyPlanScroll,300);
+  const badge=document.getElementById('cenVersionBadge'); if(badge) badge.textContent='v1.4.8';
+})();
+</script>
+
+
+
+<!-- CEN Bible v1.4.9 patch: CEN Bible folder backup + stronger reading-plan scrolling -->
+<style id="cen-v149-final-style">
+/* 성경읽기표 전체보기: 세로/가로 손가락 이동 + 스크롤바 */
+#readingPlan{
+  overflow:hidden !important;
+  touch-action:none !important;
+}
+#planContent{
+  position:relative !important;
+  height:calc(100dvh - 112px) !important;
+  max-height:calc(100dvh - 112px) !important;
+  overflow:auto !important;
+  -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior:contain !important;
+  touch-action:pan-x pan-y !important;
+  padding:0 10px 54px 10px !important;
+  box-sizing:border-box !important;
+  scrollbar-width:thin !important;
+  scrollbar-color:rgba(90,61,39,.42) rgba(234,220,201,.45) !important;
+}
+#planContent::-webkit-scrollbar{width:9px !important;height:9px !important;display:block !important;}
+#planContent::-webkit-scrollbar-thumb{background:rgba(90,61,39,.42) !important;border-radius:999px !important;}
+#planContent::-webkit-scrollbar-track{background:rgba(234,220,201,.45) !important;border-radius:999px !important;}
+#planContent .overallGrid{
+  min-width:660px !important;
+  width:max-content !important;
+  display:grid !important;
+  grid-template-columns:repeat(4, 150px) !important;
+  gap:8px !important;
+  padding:0 22px 40px 0 !important;
+  box-sizing:border-box !important;
+}
+#planContent .overBook{min-width:0 !important;}
+@supports not (height:100dvh){#planContent{height:calc(100vh - 112px) !important;max-height:calc(100vh - 112px) !important;}}
+@media(max-width:430px){
+  #planContent{height:calc(100dvh - 104px) !important;max-height:calc(100dvh - 104px) !important;}
+  #planContent .overallGrid{min-width:700px !important;grid-template-columns:repeat(4, 160px) !important;}
+}
+/* 백업 불러오기: 버튼/안내문 한 줄 고정 */
+#cenBackupDialog .foot{grid-template-columns:1fr 1fr 1fr !important;}
+#cenBackupDialog .foot button,
+#cenBackupDialog .item b,
+#cenBackupDialog .item span{
+  white-space:nowrap !important;
+  word-break:keep-all !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+#cenBackupDialog .foot button{font-size:11px !important;line-height:1.1 !important;padding-left:4px !important;padding-right:4px !important;}
+#cenBackupDialog .empty{word-break:keep-all !important;}
+</style>
+<script id="cen-v149-folder-backup-script">
+(function(){
+  const VERSION='v1.4.9';
+  const BACKUP_KEYS=['settingsV8','slotsV8','activeSlotV8','notesV8','highlightsV8','readingProgressV8','recentChaptersV1','lastBookV1','lastChapterV1','lastVersionV1','lastBackupAtV1'];
+  const DB='cenBibleFolderBackupDB';
+  const STORE='handles';
+  const ROOT_KEY='cenRootHandleV149';
+  const CEN_KEY='cenBibleFolderHandleV149';
+  const REGISTRY='cenBibleBackupRegistryV2';
+  function z(n){return String(n).padStart(2,'0');}
+  function stamp(){const d=new Date();return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes());}
+  function fileName(){return 'CEN_Bible_백업_'+stamp()+'.json';}
+  function makeBackup(){const data={app:'CEN Bible',backupVersion:4,folder:'CEN Bible',exportedAt:new Date().toISOString(),localStorage:{}};BACKUP_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)data.localStorage[k]=v;});return data;}
+  function fmt(iso){const d=new Date(iso);if(isNaN(d.getTime()))return iso||'';return d.getFullYear()+'.'+z(d.getMonth()+1)+'.'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes());}
+  function isBackupName(n){return /^CEN_Bible_백업_.*\.json$/i.test(n||'')||/^cen-bible-backup.*\.json$/i.test(n||'');}
+  function hasFSA(){return !!(window.showDirectoryPicker && window.indexedDB);}
+  function notify(msg){if(window.toast) window.toast(msg); else alert(msg);}
+  function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE);};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+  async function putHandle(key,handle){try{const db=await openDB();await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(handle,key);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});db.close();}catch(e){}}
+  async function getHandle(key){try{const db=await openDB();const h=await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readonly');const r=tx.objectStore(STORE).get(key);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error);});db.close();return h;}catch(e){return null;}}
+  async function askPerm(handle,mode){if(!handle)return false;try{let q=await handle.queryPermission({mode});if(q==='granted')return true;let r=await handle.requestPermission({mode});return r==='granted';}catch(e){return false;}}
+  async function getStoredCen(mode){let h=await getHandle(CEN_KEY);if(h && await askPerm(h,mode))return h;return null;}
+  async function pickAndCreateCenFolder(){
+    if(!hasFSA()) throw new Error('unsupported');
+    const root=await window.showDirectoryPicker({id:'cenBibleRoot',startIn:'downloads',mode:'readwrite'});
+    if(!(await askPerm(root,'readwrite'))) throw new Error('denied');
+    let cen=root;
+    if(root.name!=='CEN Bible') cen=await root.getDirectoryHandle('CEN Bible',{create:true});
+    await putHandle(ROOT_KEY,root); await putHandle(CEN_KEY,cen);
+    return cen;
+  }
+  async function getCenForWrite(){let h=await getStoredCen('readwrite'); if(h) return h; return await pickAndCreateCenFolder();}
+  async function getCenForRead(){let h=await getStoredCen('read'); if(h) return h; return await pickAndCreateCenFolder();}
+  function readRegistry(){try{const a=JSON.parse(localStorage.getItem(REGISTRY)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+  function writeRegistry(a){try{localStorage.setItem(REGISTRY,JSON.stringify(a.slice(0,40)));}catch(e){}}
+  function addRegistry(fn,data,json){const a=readRegistry().filter(x=>x&&x.fileName!==fn);a.unshift({fileName:fn,exportedAt:data.exportedAt,size:json.length,json});writeRegistry(a);}
+  async function writeFileToCen(dir,fn,json){const fh=await dir.getFileHandle(fn,{create:true});const w=await fh.createWritable();await w.write(new Blob([json],{type:'application/json;charset=utf-8'}));await w.close();}
+  function fallbackDownload(fn,json){const blob=new Blob([json],{type:'application/json;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{try{URL.revokeObjectURL(a.href);}catch(e){}a.remove();},1500);}
+  window.exportCenBibleData=async function(e){
+    if(e)e.stopPropagation();
+    const data=makeBackup(), fn=fileName(), json=JSON.stringify(data,null,2); addRegistry(fn,data,json);
+    if(!hasFSA()){
+      fallbackDownload(fn,json); localStorage.setItem('lastBackupAtV1',new Date().toISOString()); if(window.updateBackupStatus)window.updateBackupStatus();
+      alert('이 브라우저는 CEN Bible 폴더 직접 저장 권한을 지원하지 않습니다.\n\n대신 다운로드 폴더에 저장합니다.\n파일명: '+fn); return;
+    }
+    try{
+      const existed=!!(await getStoredCen('readwrite'));
+      const dir=await getCenForWrite();
+      await writeFileToCen(dir,fn,json);
+      localStorage.setItem('lastBackupAtV1',new Date().toISOString()); if(window.updateBackupStatus)window.updateBackupStatus();
+      alert((existed?'CEN Bible 폴더에 백업했습니다.':'CEN Bible 폴더 권한을 저장했고 백업했습니다.')+'\n\n파일명: '+fn);
+    }catch(err){
+      fallbackDownload(fn,json); localStorage.setItem('lastBackupAtV1',new Date().toISOString()); if(window.updateBackupStatus)window.updateBackupStatus();
+      alert('CEN Bible 폴더 저장 권한을 받지 못해 다운로드 방식으로 저장합니다.\n\n파일명: '+fn);
+    }
+  };
+  function ensureDialog(){
+    let dlg=document.getElementById('cenBackupDialog');
+    if(!dlg){
+      const style=document.createElement('style');style.textContent=`
+#cenBackupDialog{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.38);padding:22px;box-sizing:border-box;font-family:var(--uiFont,system-ui,sans-serif)}
+#cenBackupDialog .box{width:min(580px,100%);max-height:80vh;overflow:hidden;background:#fffaf0;border-radius:24px;box-shadow:0 18px 40px rgba(0,0,0,.25);border:1px solid #e7d9c5;color:#4b3624;display:flex;flex-direction:column}
+#cenBackupDialog .head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 10px;font-weight:900;font-size:20px;color:#5a3d27}
+#cenBackupDialog .close{border:0;background:#f4eadb;border-radius:16px;width:44px;height:44px;font-size:28px;line-height:1;color:#6b4d35}
+#cenBackupDialog .desc{padding:0 20px 12px;font-size:13px;line-height:1.45;color:#70583a}
+#cenBackupDialog .list{overflow:auto;padding:0 16px 14px;display:flex;flex-direction:column;gap:9px}
+#cenBackupDialog .item{width:100%;text-align:left;border:1px solid #e2d2bc;background:#fffdf7;border-radius:16px;padding:13px 14px;color:#4b3624;box-shadow:0 2px 6px rgba(80,50,20,.06)}
+#cenBackupDialog .item b{display:block;font-size:14px;margin-bottom:4px}
+#cenBackupDialog .item span{display:block;font-size:12px;color:#7a634b}
+#cenBackupDialog .empty{padding:18px;margin:0 16px 14px;border-radius:16px;background:#fffdf7;border:1px dashed #d9c7ae;text-align:center;font-weight:800;color:#6b4d35;line-height:1.55}
+#cenBackupDialog .foot{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 16px 18px;border-top:1px solid #eadfce;background:#fff8ec}
+#cenBackupDialog .foot button{border:1px solid #d9c7ae;border-radius:14px;background:#fffdf7;color:#5a3d27;font-weight:800;padding:12px 6px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cenBackupDialog .foot .primary{background:#5a3d27;color:#fff;border-color:#5a3d27}`;document.head.appendChild(style);
+      dlg=document.createElement('div');dlg.id='cenBackupDialog';document.body.appendChild(dlg);
+    }
+    dlg.innerHTML='<div class="box"><div class="head"><div>CEN Bible 백업 불러오기</div><button class="close" type="button">×</button></div><div class="desc">CEN Bible 폴더의 백업파일을 검색합니다. 최초 1회는 폴더 선택/권한 허용이 필요할 수 있습니다.</div><div class="list"><div class="empty">CEN Bible 폴더를 확인하는 중입니다.</div></div><div class="foot"><button type="button" class="scan">CEN Bible 폴더 선택</button><button type="button" class="manual">직접 파일 선택</button><button type="button" class="primary cancel">닫기</button></div></div>';
+    dlg.querySelector('.close').onclick=()=>dlg.style.display='none'; dlg.querySelector('.cancel').onclick=()=>dlg.style.display='none'; dlg.querySelector('.manual').onclick=()=>{dlg.style.display='none'; const input=document.getElementById('cenBibleImportFile'); if(input){input.value='';input.click();}}; dlg.querySelector('.scan').onclick=()=>loadCenList(true); dlg.onclick=e=>{if(e.target===dlg)dlg.style.display='none';}; return dlg;
+  }
+  async function scanCen(){const dir=await getCenForRead();const files=[];for await(const [name,h] of dir.entries()){if(h.kind==='file'&&isBackupName(name)){try{const f=await h.getFile();files.push({fileName:name,file:f,exportedAt:new Date(f.lastModified).toISOString(),size:f.size});}catch(e){}}}files.sort((a,b)=>(b.file.lastModified||0)-(a.file.lastModified||0));return files;}
+  async function loadCenList(forcePick){
+    const dlg=ensureDialog();const list=dlg.querySelector('.list');dlg.style.display='flex';list.innerHTML='<div class="empty">CEN Bible 폴더의 백업파일을 검색하는 중입니다.</div>';
+    try{if(forcePick) await putHandle(CEN_KEY,null);const files=await scanCen();list.innerHTML='';if(!files.length){list.innerHTML='<div class="empty">CEN Bible 폴더에 백업파일이 없습니다.<br><br>먼저 내보내기를 실행해 주세요.</div>';return;}files.forEach((bk,i)=>{const btn=document.createElement('button');btn.type='button';btn.className='item';btn.innerHTML='<b>'+bk.fileName+'</b><span>수정시각: '+fmt(bk.exportedAt)+' · 크기: '+Math.max(1,Math.round((bk.size||0)/1024))+'KB</span>';btn.onclick=()=>applyFile(bk.file).catch(()=>alert('백업 파일을 읽지 못했습니다.'));list.appendChild(btn);});}
+    catch(err){const arr=readRegistry();list.innerHTML='';if(arr.length){list.innerHTML='<div class="empty">CEN Bible 폴더 권한을 확인하지 못해 앱 내부 백업목록을 표시합니다.</div>';arr.forEach((bk,i)=>{const btn=document.createElement('button');btn.type='button';btn.className='item';btn.innerHTML='<b>'+bk.fileName+'</b><span>저장시각: '+fmt(bk.exportedAt)+' · 앱 내부 기록</span>';btn.onclick=()=>applyJson(bk.json).catch(()=>alert('백업 파일을 읽지 못했습니다.'));list.appendChild(btn);});}else{list.innerHTML='<div class="empty">CEN Bible 폴더 권한이 없습니다.<br><br>아래의 CEN Bible 폴더 선택을 눌러 권한을 허용해 주세요.</div>';}}
+  }
+  async function applyJson(json){if(!json||!String(json).trim())throw new Error('empty');const parsed=JSON.parse(json);const store=parsed&&parsed.localStorage;if(!store||typeof store!=='object')throw new Error('invalid');const keys=Object.keys(store).filter(k=>BACKUP_KEYS.includes(k));if(!keys.length)throw new Error('no keys');if(!confirm('백업 데이터를 불러오면 현재 저장된 성구·메모·읽기표·설정이 덮어써집니다. 계속할까요?'))return;keys.forEach(k=>localStorage.setItem(k,String(store[k])));alert('데이터를 불러왔습니다. 앱을 다시 열어 반영합니다.');location.reload();}
+  async function applyFile(file){if(!file)return notify('불러오기 파일이 선택되지 않았습니다.');if(file.size===0){alert('선택한 백업파일이 0B입니다. 정상 백업파일이 아닙니다. 다시 내보내기 후 시도하세요.');return;}await applyJson(await file.text());}
+  window.importCenBibleData=function(e){if(e)e.stopPropagation();loadCenList(false);};
+  function bind(){const input=document.getElementById('cenBibleImportFile');if(input&&!input.__cenV149Bound){input.__cenV149Bound=true;input.addEventListener('change',()=>{const f=input.files&&input.files[0];if(!f)return notify('불러오기 파일이 선택되지 않았습니다.');applyFile(f).catch(()=>alert('백업 파일을 읽지 못했습니다.'));});}}
+  function applyScroll(){const pc=document.getElementById('planContent');if(!pc)return;pc.style.overflow='auto';pc.style.webkitOverflowScrolling='touch';pc.style.touchAction='pan-x pan-y';pc.style.height='calc(100dvh - 112px)';pc.style.maxHeight='calc(100dvh - 112px)';const g=pc.querySelector('.overallGrid');if(g){g.style.minWidth=(innerWidth<430?'700px':'660px');g.style.width='max-content';g.style.paddingBottom='40px';}}
+  const old=window.showPlanAll;if(typeof old==='function'&&!old.__cenV149Wrapped){window.showPlanAll=function(){const r=old.apply(this,arguments);setTimeout(applyScroll,0);setTimeout(applyScroll,150);setTimeout(applyScroll,400);return r;};window.showPlanAll.__cenV149Wrapped=true;}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{bind();setTimeout(applyScroll,300);});else{bind();setTimeout(applyScroll,300);}window.addEventListener('resize',()=>setTimeout(applyScroll,100));
+  const badge=document.getElementById('cenVersionBadge');if(badge)badge.textContent=VERSION;
+})();
+</script>
+
 </body>
 </html>
