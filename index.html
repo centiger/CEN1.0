@@ -176,7 +176,7 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
 .responsiveBody { white-space:pre-wrap; font-family:var(--bodyFont); line-height:1.7; font-size:16px; color:var(--ink); }
 .responsiveLine { display:block; margin:2px 0; }
 .responsiveLine.congregation { color:#1e5bbf; font-weight:700; }
-.creedCompact { font-size:15px !important; line-height:1.52 !important; letter-spacing:-0.03em; }
+.creedCompact { font-size:17px !important; line-height:1.8 !important; letter-spacing:normal !important; }
 .memoListItem { border-bottom:1px solid #eadcc9; padding:10px 0; line-height:1.55; }
 .memoListItem .ref { color:#6d4f31; font-weight:800; font-family:var(--uiFont); font-size:13px; }
 .memoListItem .body { color:#3d3023; font-size:14px; margin-top:4px; }
@@ -1926,6 +1926,17 @@ body.scoreViewerOpen{
 })();
 </script>
 
+
+<style id="cen-v153-worship-loader-guide-fix">
+/* v1.5.3: 사도신경 크기, 교독문 스크롤, 로딩 표시 지연, 가이드 문구 보정 */
+#textPanelBody.creedCompact{font-size:17px!important;line-height:1.8!important;letter-spacing:normal!important;}
+#responsivePanel .panel{max-height:88vh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;}
+#responsivePanel .panelHead{flex:0 0 auto!important;}
+#responsiveDetailView{flex:1 1 auto!important;min-height:0!important;overflow:hidden!important;display:none;}
+#responsiveDetailView>button{flex:0 0 auto!important;}
+#responsiveBody{max-height:calc(88vh - 118px)!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important;padding:4px 4px 20px!important;box-sizing:border-box!important;}
+#loader{transition:opacity .12s ease!important;}
+</style>
 </head>
 <body>
 <div id="installTip">홈 화면에 추가하면 주소창이 줄어들어 앱처럼 사용할 수 있습니다.<button onclick="hideInstallTip()">닫기</button></div>
@@ -2026,7 +2037,7 @@ body.scoreViewerOpen{
       <ul class="guideList">
         <li>돋보기 버튼을 눌러 단어 또는 구절 일부를 검색합니다.</li>
         <li>검색 결과에서 본문 위치를 확인하거나 필요한 구절을 나의 성구에 저장할 수 있습니다.</li>
-        <li>검색창의 <b>권별초기화</b> 버튼으로 검색어와 결과를 지울 수 있습니다.</li>
+        <li>검색창의 <b>초기화</b> 버튼으로 검색어와 결과를 지울 수 있습니다.</li>
         <li>검색창에서 나가면 검색어와 결과가 자동으로 초기화됩니다.</li>
       </ul>
     </div>
@@ -2078,7 +2089,7 @@ body.scoreViewerOpen{
       </ul>
     </div>
 
-    <div class="guideFooter">This app is made by Lee Joong Borm. All rights reserved.</div>
+    <div class="guideFooter">This app is made by Lee Joong Borm.</div>
     </div>
   </div>
 </div></div>
@@ -2172,14 +2183,22 @@ let bibleData = {};
 let hymnData = null;
 let loadingDepth = 0;
 
+let loaderTimer = null;
 function showLoader(msg='불러오는 중입니다...') {
   loadingDepth++;
-  document.getElementById('loaderText').textContent = msg;
-  document.getElementById('loader').classList.remove('hide');
+  const textEl = document.getElementById('loaderText');
+  const loaderEl = document.getElementById('loader');
+  if (textEl) textEl.textContent = msg;
+  if (loaderTimer) clearTimeout(loaderTimer);
+  loaderTimer = setTimeout(()=>{ if (loadingDepth > 0 && loaderEl) loaderEl.classList.remove('hide'); }, 160);
 }
 function hideLoader() {
   loadingDepth = Math.max(0, loadingDepth-1);
-  if (loadingDepth === 0) document.getElementById('loader').classList.add('hide');
+  if (loadingDepth === 0) {
+    if (loaderTimer) { clearTimeout(loaderTimer); loaderTimer = null; }
+    const loaderEl = document.getElementById('loader');
+    if (loaderEl) loaderEl.classList.add('hide');
+  }
 }
 
 async function unzipTextFromScript(id) {
@@ -2283,7 +2302,7 @@ async function init() {
   await loadVersion(state.version);
   await loadChapter(false);
   setupBackGuard();
-  setTimeout(()=>hideLoader(), 180);
+  hideLoader();
 }
 
 
@@ -7505,7 +7524,7 @@ function resetMemoSearch(){
 
 
 
-<!-- CEN Bible v1.5.2 patch: explicit CEN Bible folder permission flow + reading-plan full scroll + guide font alignment -->
+<!-- CEN Bible v1.5.3 patch: explicit CEN Bible folder permission flow + reading-plan full scroll + guide font alignment -->
 <style id="cen-v150-style">
 /* 사용가이드 9·10번 글자 크기: 다른 항목과 동일화 */
 .guideSection ul,
@@ -7562,7 +7581,7 @@ function resetMemoSearch(){
 </style>
 <script id="cen-v150-folder-backup-script">
 (function(){
-  const VERSION='v1.5.2';
+  const VERSION='v1.5.3';
   const BACKUP_KEYS=['settingsV8','slotsV8','activeSlotV8','notesV8','highlightsV8','readingProgressV8','recentChaptersV1','lastBookV1','lastChapterV1','lastVersionV1','lastBackupAtV1'];
   const DB='cenBibleFolderBackupDB';
   const STORE='handles';
@@ -7669,7 +7688,7 @@ function resetMemoSearch(){
 
 
 
-<!-- CEN Bible v1.5.2 patch: explicit CEN folder permission flow + restored reading-plan scroll -->
+<!-- CEN Bible v1.5.3 patch: explicit CEN folder permission flow + restored reading-plan scroll -->
 <style id="cen-v151-reading-plan-scroll-style">
 /* 성경읽기표 전체보기: 요한계시록까지 손가락 이동/스크롤 완전 복원 */
 #readingPlan{
@@ -7736,7 +7755,7 @@ function resetMemoSearch(){
 <script id="cen-v151-folder-permission-backup-script">
 (function(){
   'use strict';
-  const VERSION='v1.5.2';
+  const VERSION='v1.5.3';
   const DB='cen-bible-folder-db-v151', STORE='handles', KEY='cenBibleFolderHandle';
   const BACKUP_KEYS=['cenBibleNotes','cenBibleHighlights','cenBibleUnderline','cenBibleBookmarks','cenBibleProgress','cenBibleSlots','cenBibleSettings','lastState','cenBibleMemos','cenBibleReadingPlan','cenBibleReadingProgress'];
   function z(n){return String(n).padStart(2,'0');}
@@ -7805,7 +7824,7 @@ function resetMemoSearch(){
 
 
 <style id="cen-v152-backup-fix-style">
-/* v1.5.2 백업 안정화: 기존 기능 유지, 백업/복원만 보강 */
+/* v1.5.3 백업 안정화: 기존 기능 유지, 백업/복원만 보강 */
 #cenBackupDialog .foot button,
 #cenFolderFlowModal .foot button{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;word-break:keep-all!important;line-height:1.15!important;}
 #cenBackupDialog .item b,#cenBackupDialog .item span{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
@@ -7816,7 +7835,7 @@ function resetMemoSearch(){
 <script id="cen-v152-complete-backup-fix">
 (function(){
   'use strict';
-  const VERSION='v1.5.2';
+  const VERSION='v1.5.3';
   const DB='cen-bible-folder-db-v152', STORE='handles', KEY='cenBibleFolderHandleV152';
   const SKIP=/^(cen-bible-folder-db|__|debug|temp)/i;
   function z(n){return String(n).padStart(2,'0');}
