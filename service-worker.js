@@ -1,4 +1,4 @@
-const CACHE_NAME = "cen-bible-v1.4.1";
+const CACHE_NAME = "cen-bible-v1.5.7";
 const APP_SHELL = [
   "./",
   "./index.html",

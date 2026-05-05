@@ -1928,7 +1928,7 @@ body.scoreViewerOpen{
 
 
 <style id="cen-v153-worship-loader-guide-fix">
-/* v1.5.3: 사도신경 크기, 교독문 스크롤, 로딩 표시 지연, 가이드 문구 보정 */
+/* v1.5.8: 사도신경 크기, 교독문 스크롤, 로딩 표시 지연, 가이드 문구 보정 */
 #textPanelBody.creedCompact{font-size:17px!important;line-height:1.8!important;letter-spacing:normal!important;}
 #responsivePanel .panel{max-height:88vh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;}
 #responsivePanel .panelHead{flex:0 0 auto!important;}
@@ -1936,6 +1936,30 @@ body.scoreViewerOpen{
 #responsiveDetailView>button{flex:0 0 auto!important;}
 #responsiveBody{max-height:calc(88vh - 118px)!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important;padding:4px 4px 20px!important;box-sizing:border-box!important;}
 #loader{transition:opacity .12s ease!important;}
+</style>
+
+<style id="cen-v156-request-fixes">
+/* 검색창 초기화 문구/사용가이드 제목 크기/교독문 스크롤 복원 */
+#guidePanel .guideSection h4{font-size:12.5px!important;line-height:1.65!important;}
+#guidePanel .guideNum{font-size:11px!important;width:20px!important;height:20px!important;}
+#responsivePanel .panel{height:min(88vh,720px)!important;max-height:88vh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;}
+#responsivePanel .panelHead{flex:0 0 auto!important;}
+#responsiveListView{flex:1 1 auto!important;min-height:0!important;display:flex;flex-direction:column;overflow:hidden!important;}
+#responsiveList{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important;padding-bottom:70px!important;}
+#responsiveDetailView{flex:1 1 auto!important;min-height:0!important;overflow:hidden!important;flex-direction:column!important;}
+#responsiveDetailView[style*="block"]{display:flex!important;}
+#responsiveDetailView>button{flex:0 0 auto!important;}
+#responsiveBody.responsiveBody{flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important;overscroll-behavior:contain!important;padding:4px 4px 90px!important;box-sizing:border-box!important;}
+</style>
+
+<style id="cen-v158-guide-title-size-only">
+/* v1.5.8: 사용가이드 1~10번 항목 제목만 확대 - 다른 기능 유지 */
+#guidePanel .guideSection h4{font-size:20px!important;line-height:1.35!important;font-weight:800!important;}
+#guidePanel .guideNum{font-size:15px!important;width:28px!important;height:28px!important;border-radius:9px!important;flex:0 0 28px!important;}
+#guidePanel .guideList{font-size:18px!important;line-height:1.75!important;}
+#guidePanel .guideMiniGrid b{font-size:18px!important;}
+#guidePanel .guideMiniGrid span{font-size:16px!important;line-height:1.55!important;}
+#guidePanel .guideNote{font-size:16px!important;line-height:1.55!important;}
 </style>
 </head>
 <body>
@@ -1959,7 +1983,7 @@ body.scoreViewerOpen{
 <div id="bookModal" class="modal"><div class="panel"><div class="panelHead"><h3>성경 선택</h3><button class="xbtn" onclick="closeModal('bookModal')">×</button></div><h4>구약</h4><div id="otBooks" class="bookGrid"></div><h4>신약</h4><div id="ntBooks" class="bookGrid"></div></div></div>
 <div id="chapterModal" class="modal"><div class="panel"><div class="panelHead"><h3>장 선택</h3><button class="xbtn" onclick="closeModal('chapterModal')">×</button></div><div id="chapters" class="chapGrid"></div></div></div>
 <div id="versionModal" class="modal"><div class="panel"><div class="panelHead"><h3>번역본</h3><button class="xbtn" onclick="closeModal('versionModal')">×</button></div><div id="versions" class="versionList"></div></div></div>
-<div id="searchPanel" class="modal"><div class="panel"><div class="panelHead"><h3>성경 검색</h3><button class="xbtn" onclick="closeModal('searchPanel')">×</button></div><input id="searchInput" placeholder="검색어 입력"><div class="settingBtns"><button class="colored" onclick="searchBible()">검색</button><button onclick="clearBibleSearch()">권별초기화</button></div><div id="searchResult"></div></div></div>
+<div id="searchPanel" class="modal"><div class="panel"><div class="panelHead"><h3>성경 검색</h3><button class="xbtn" onclick="closeModal('searchPanel')">×</button></div><input id="searchInput" placeholder="검색어 입력"><div class="settingBtns"><button class="colored" onclick="searchBible()">검색</button><button onclick="clearBibleSearch()">검색초기화</button></div><div id="searchResult"></div></div></div>
 <div id="hymnPanel" class="modal"><div class="panel"><div class="panelHead"><h3>찬송가</h3><button class="xbtn" onclick="closeModal('hymnPanel')">×</button></div><input id="hymnInput" placeholder="번호 또는 제목 검색"><div class="settingBtns"><button class="colored" onclick="searchHymn()">검색</button></div><div id="hymnResult"></div></div></div>
 <div id="memoListPanel" class="modal"><div class="panel"><div class="panelHead"><h3>메모 전체보기</h3><button class="xbtn" onclick="closeModal('memoListPanel')">×</button></div><div class="memoToolbar"><input id="memoSearchInput" placeholder="메모 검색어"><button onclick="renderMemoList()">검색</button><button onclick="resetMemoSearch()">초기화</button></div><div id="memoListArea"></div></div></div>
 <div id="savedSearchPanel" class="modal"><div class="panel"><div class="panelHead"><h3>저장자료 통합검색</h3><button class="xbtn" onclick="closeModal('savedSearchPanel')">×</button></div>
@@ -3253,6 +3277,7 @@ function showResponsiveDetail(no){
   document.getElementById('responsiveListView').style.display='none';
   document.getElementById('responsiveDetailView').style.display='block';
   document.getElementById('responsiveBody').innerHTML=formatResponsiveBody(r.body);
+  setTimeout(()=>{ const b=document.getElementById('responsiveBody'); if(b) b.scrollTop=0; },0);
 }
 function backResponsiveList(){
   document.getElementById('responsiveTitle').textContent='교독문';
@@ -7525,7 +7550,7 @@ function resetMemoSearch(){
 
 
 
-<!-- CEN Bible v1.5.3 patch: explicit CEN Bible folder permission flow + reading-plan full scroll + guide font alignment -->
+<!-- CEN Bible v1.5.8 patch: explicit CEN Bible folder permission flow + reading-plan full scroll + guide font alignment -->
 <style id="cen-v150-style">
 /* 사용가이드 9·10번 글자 크기: 다른 항목과 동일화 */
 .guideSection ul,
@@ -7582,7 +7607,7 @@ function resetMemoSearch(){
 </style>
 <script id="cen-v150-folder-backup-script">
 (function(){
-  const VERSION='v1.5.3';
+  const VERSION='v1.5.8';
   const BACKUP_KEYS=['settingsV8','slotsV8','activeSlotV8','notesV8','highlightsV8','readingProgressV8','recentChaptersV1','lastBookV1','lastChapterV1','lastVersionV1','lastBackupAtV1'];
   const DB='cenBibleFolderBackupDB';
   const STORE='handles';
@@ -7689,7 +7714,7 @@ function resetMemoSearch(){
 
 
 
-<!-- CEN Bible v1.5.3 patch: explicit CEN folder permission flow + restored reading-plan scroll -->
+<!-- CEN Bible v1.5.8 patch: explicit CEN folder permission flow + restored reading-plan scroll -->
 <style id="cen-v151-reading-plan-scroll-style">
 /* 성경읽기표 전체보기: 요한계시록까지 손가락 이동/스크롤 완전 복원 */
 #readingPlan{
@@ -7756,7 +7781,7 @@ function resetMemoSearch(){
 <script id="cen-v151-folder-permission-backup-script">
 (function(){
   'use strict';
-  const VERSION='v1.5.3';
+  const VERSION='v1.5.8';
   const DB='cen-bible-folder-db-v151', STORE='handles', KEY='cenBibleFolderHandle';
   const BACKUP_KEYS=['cenBibleNotes','cenBibleHighlights','cenBibleUnderline','cenBibleBookmarks','cenBibleProgress','cenBibleSlots','cenBibleSettings','lastState','cenBibleMemos','cenBibleReadingPlan','cenBibleReadingProgress'];
   function z(n){return String(n).padStart(2,'0');}
@@ -7825,7 +7850,7 @@ function resetMemoSearch(){
 
 
 <style id="cen-v152-backup-fix-style">
-/* v1.5.3 백업 안정화: 기존 기능 유지, 백업/복원만 보강 */
+/* v1.5.8 백업 안정화: 기존 기능 유지, 백업/복원만 보강 */
 #cenBackupDialog .foot button,
 #cenFolderFlowModal .foot button{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;word-break:keep-all!important;line-height:1.15!important;}
 #cenBackupDialog .item b,#cenBackupDialog .item span{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
@@ -7836,7 +7861,7 @@ function resetMemoSearch(){
 <script id="cen-v152-complete-backup-fix">
 (function(){
   'use strict';
-  const VERSION='v1.5.3';
+  const VERSION='v1.5.8';
   const DB='cen-bible-folder-db-v152', STORE='handles', KEY='cenBibleFolderHandleV152';
   const SKIP=/^(cen-bible-folder-db|__|debug|temp)/i;
   function z(n){return String(n).padStart(2,'0');}
@@ -7922,6 +7947,117 @@ function resetMemoSearch(){
   document.addEventListener('click',e=>{const t=(e.target&&(e.target.innerText||e.target.textContent)||'');if(/성경읽기표|전체보기|전체초기화/.test(t)){[80,250,600].forEach(x=>setTimeout(restorePlan,x));}},true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{bind();setTimeout(restorePlan,400);});else{bind();setTimeout(restorePlan,400);}window.addEventListener('resize',()=>setTimeout(restorePlan,100));
   const badge=document.getElementById('cenVersionBadge');if(badge)badge.textContent=VERSION;
+})();
+</script>
+
+
+
+<style id="cen-v157-final-request-fixes">
+/* v1.5.7: 검색 초기화 문구 고정, 교독문 손가락 이동/스크롤 복원, 사용가이드 제목 크기 조정 */
+#searchPanel .settingBtns button[onclick*="clearBibleSearch"]{white-space:nowrap!important;}
+#guidePanel .guideSection h4{
+  font-size:12.5px!important;
+  line-height:1.65!important;
+  font-weight:700!important;
+}
+#guidePanel .guideSection h4 .guideNum{
+  font-size:11px!important;
+}
+#responsivePanel.modal{
+  align-items:center!important;
+  justify-content:center!important;
+  touch-action:none!important;
+}
+#responsivePanel .panel{
+  width:min(96vw,620px)!important;
+  height:min(88vh,720px)!important;
+  max-height:88vh!important;
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+  box-sizing:border-box!important;
+}
+#responsivePanel .panelHead{flex:0 0 auto!important;}
+#responsiveListView{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+}
+#responsivePanel .responsiveToolbar{flex:0 0 auto!important;}
+#responsiveList{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow-y:scroll!important;
+  overflow-x:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-y!important;
+  overscroll-behavior:contain!important;
+  padding-bottom:120px!important;
+  scrollbar-width:thin!important;
+}
+#responsiveDetailView{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  flex-direction:column!important;
+}
+#responsiveDetailView[style*="block"]{display:flex!important;}
+#responsiveDetailView>button{flex:0 0 auto!important;}
+#responsiveBody{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow-y:scroll!important;
+  overflow-x:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-y!important;
+  overscroll-behavior:contain!important;
+  padding:4px 4px 140px!important;
+  box-sizing:border-box!important;
+  scrollbar-width:thin!important;
+}
+</style>
+<script id="cen-v157-final-request-fixes-js">
+(function(){
+  const VERSION='v1.5.7';
+  function fixSearchButton(){
+    const btns=document.querySelectorAll('#searchPanel button');
+    btns.forEach(b=>{
+      const oc=b.getAttribute('onclick')||'';
+      const txt=(b.textContent||'').trim();
+      if(oc.includes('clearBibleSearch') || txt==='권별초기화') b.textContent='검색초기화';
+    });
+  }
+  function fixResponsiveScroll(){
+    const panel=document.querySelector('#responsivePanel .panel');
+    const listView=document.getElementById('responsiveListView');
+    const list=document.getElementById('responsiveList');
+    const detail=document.getElementById('responsiveDetailView');
+    const body=document.getElementById('responsiveBody');
+    if(panel){panel.style.display='flex';panel.style.flexDirection='column';panel.style.overflow='hidden';panel.style.height='min(88vh,720px)';panel.style.maxHeight='88vh';}
+    if(listView){listView.style.flex='1 1 auto';listView.style.minHeight='0';listView.style.overflow='hidden';if(detail && detail.style.display!=='block') listView.style.display='flex';}
+    if(list){list.style.flex='1 1 auto';list.style.minHeight='0';list.style.overflowY='scroll';list.style.overflowX='hidden';list.style.webkitOverflowScrolling='touch';list.style.touchAction='pan-y';list.style.paddingBottom='120px';}
+    if(detail){detail.style.flex='1 1 auto';detail.style.minHeight='0';detail.style.overflow='hidden';if(detail.style.display==='block') detail.style.display='flex';}
+    if(body){body.style.flex='1 1 auto';body.style.minHeight='0';body.style.maxHeight='none';body.style.overflowY='scroll';body.style.overflowX='hidden';body.style.webkitOverflowScrolling='touch';body.style.touchAction='pan-y';body.style.paddingBottom='140px';}
+  }
+  function fixGuideTitles(){
+    document.querySelectorAll('#guidePanel .guideSection h4').forEach(h=>{h.style.fontSize='12.5px';h.style.lineHeight='1.65';});
+  }
+  function applyAll(){fixSearchButton();fixResponsiveScroll();fixGuideTitles();const badge=document.getElementById('cenVersionBadge');if(badge)badge.textContent=VERSION;}
+  const ors=window.openSearch;if(typeof ors==='function'&&!ors.__v157){window.openSearch=function(){const r=ors.apply(this,arguments);setTimeout(fixSearchButton,0);setTimeout(fixSearchButton,120);return r;};window.openSearch.__v157=true;}
+  const ort=window.openResponsiveText;if(typeof ort==='function'&&!ort.__v157){window.openResponsiveText=function(){const r=ort.apply(this,arguments);[0,120,300].forEach(t=>setTimeout(fixResponsiveScroll,t));return r;};window.openResponsiveText.__v157=true;}
+  const orl=window.renderResponsiveList;if(typeof orl==='function'&&!orl.__v157){window.renderResponsiveList=function(){const r=orl.apply(this,arguments);setTimeout(fixResponsiveScroll,0);return r;};window.renderResponsiveList.__v157=true;}
+  const ors2=window.showResponsiveDetail;if(typeof ors2==='function'&&!ors2.__v157){window.showResponsiveDetail=function(){const r=ors2.apply(this,arguments);[0,120,300].forEach(t=>setTimeout(fixResponsiveScroll,t));return r;};window.showResponsiveDetail.__v157=true;}
+  const ob=window.backResponsiveList;if(typeof ob==='function'&&!ob.__v157){window.backResponsiveList=function(){const r=ob.apply(this,arguments);[0,120].forEach(t=>setTimeout(fixResponsiveScroll,t));return r;};window.backResponsiveList.__v157=true;}
+  document.addEventListener('click',function(e){
+    const t=(e.target&&(e.target.innerText||e.target.textContent)||'');
+    if(/교독문|목록|시편|다같이|성경 검색|검색/.test(t)){[50,180,360].forEach(x=>setTimeout(applyAll,x));}
+  },true);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',applyAll);else applyAll();
+  window.addEventListener('resize',()=>setTimeout(fixResponsiveScroll,100));
 })();
 </script>
 
