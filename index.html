@@ -8333,5 +8333,201 @@ function resetMemoSearch(){
 })();
 </script>
 
+
+
+<style id="cen-v161-responsive-detail-final-css">
+/* v1.6.1: 교독문 목록 클릭 시 본문 창 강제 표시 - 교독문 기능만 보완 */
+#responsivePanel .panel{
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+  max-height:88vh!important;
+  height:min(88vh,720px)!important;
+}
+#responsiveListView{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  flex-direction:column!important;
+}
+#responsiveList{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-y!important;
+  padding-bottom:96px!important;
+}
+#responsiveList .responsiveItem{
+  cursor:pointer!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  -webkit-tap-highlight-color:rgba(109,79,49,.18)!important;
+}
+#responsiveDetailView{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  flex-direction:column!important;
+}
+#responsiveDetailView.cen-show-detail{
+  display:flex!important;
+}
+#responsiveListView.cen-hide-list{
+  display:none!important;
+}
+#responsiveDetailView>button{
+  flex:0 0 auto!important;
+  white-space:nowrap!important;
+}
+#responsiveBody{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-y!important;
+  overscroll-behavior:contain!important;
+  padding:10px 4px 120px!important;
+  box-sizing:border-box!important;
+}
+#responsiveBody .responsiveLine{
+  display:block!important;
+  margin:0 0 10px!important;
+  line-height:1.75!important;
+  white-space:pre-wrap!important;
+}
+#responsiveBody .congregation{
+  font-weight:800!important;
+  color:#6d4f31!important;
+}
+</style>
+<script id="cen-v161-responsive-detail-final-js">
+(function(){
+  'use strict';
+  var VERSION='v1.6.1';
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"']/g,function(ch){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+    });
+  }
+  function getReadings(){
+    try{
+      if(Array.isArray(window.RESPONSIVE_READINGS)) return window.RESPONSIVE_READINGS;
+    }catch(e){}
+    try{
+      if(typeof RESPONSIVE_READINGS!=='undefined' && Array.isArray(RESPONSIVE_READINGS)) return RESPONSIVE_READINGS;
+    }catch(e){}
+    return [];
+  }
+  function bodyHtml(body){
+    return String(body||'').split('\n').map(function(line){
+      var t=line.trim();
+      var cls=(t.charAt(0)==='=' || t.indexOf('(다같이)')===0 || t.indexOf('다같이')===0) ? 'responsiveLine congregation' : 'responsiveLine';
+      return '<div class="'+cls+'">'+esc(line)+'</div>';
+    }).join('');
+  }
+  function setMode(mode){
+    var listView=document.getElementById('responsiveListView');
+    var detail=document.getElementById('responsiveDetailView');
+    var list=document.getElementById('responsiveList');
+    var body=document.getElementById('responsiveBody');
+    if(mode==='detail'){
+      if(listView){listView.classList.add('cen-hide-list');listView.style.display='none';}
+      if(detail){detail.classList.add('cen-show-detail');detail.style.display='flex';detail.style.flexDirection='column';}
+    }else{
+      if(detail){detail.classList.remove('cen-show-detail');detail.style.display='none';}
+      if(listView){listView.classList.remove('cen-hide-list');listView.style.display='flex';listView.style.flexDirection='column';}
+    }
+    if(list){list.style.overflowY='auto';list.style.webkitOverflowScrolling='touch';list.style.touchAction='pan-y';}
+    if(body){body.style.overflowY='auto';body.style.webkitOverflowScrolling='touch';body.style.touchAction='pan-y';}
+  }
+  function showResponsiveDetailFixed(no){
+    var arr=getReadings();
+    var r=arr.find(function(x){return String(x.no)===String(no);});
+    if(!r){ alert('교독문 내용을 찾지 못했습니다.'); return false; }
+    var title=document.getElementById('responsiveTitle');
+    var body=document.getElementById('responsiveBody');
+    if(title) title.textContent=String(r.no)+'. '+String(r.title||'');
+    if(body){ body.innerHTML=bodyHtml(r.body); body.scrollTop=0; }
+    setMode('detail');
+    setTimeout(function(){ if(body) body.scrollTop=0; setMode('detail'); },40);
+    return false;
+  }
+  function renderResponsiveListFixed(){
+    var area=document.getElementById('responsiveList');
+    if(!area) return false;
+    var q=(document.getElementById('responsiveSearchInput')&&document.getElementById('responsiveSearchInput').value||'').trim();
+    var arr=getReadings().filter(function(r){
+      return !q || String(r.no).indexOf(q)>-1 || String(r.title||'').indexOf(q)>-1 || String(r.body||'').indexOf(q)>-1;
+    });
+    area.innerHTML='';
+    if(!arr.length){
+      area.innerHTML='<div style="padding:16px;color:#8a755c;text-align:center">검색 결과가 없습니다.</div>';
+      setMode('list');
+      return false;
+    }
+    arr.forEach(function(r){
+      var div=document.createElement('div');
+      div.className='responsiveItem';
+      div.setAttribute('data-no',String(r.no));
+      div.innerHTML='<b>'+esc(String(r.no)+'. '+String(r.title||''))+'</b>';
+      div.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} return showResponsiveDetailFixed(r.no); };
+      area.appendChild(div);
+    });
+    setMode('list');
+    return false;
+  }
+  function backResponsiveListFixed(){
+    var title=document.getElementById('responsiveTitle');
+    if(title) title.textContent='교독문';
+    setMode('list');
+    renderResponsiveListFixed();
+    return false;
+  }
+  function openResponsiveTextFixed(ev){
+    if(ev){ev.preventDefault&&ev.preventDefault();ev.stopPropagation&&ev.stopPropagation();}
+    try{ if(typeof closeSettings==='function') closeSettings(); }catch(e){}
+    var panel=document.getElementById('responsivePanel');
+    var input=document.getElementById('responsiveSearchInput');
+    var title=document.getElementById('responsiveTitle');
+    if(title) title.textContent='교독문';
+    if(input) input.value='';
+    if(panel) panel.style.display='flex';
+    renderResponsiveListFixed();
+    setMode('list');
+    return false;
+  }
+  window.showResponsiveDetail=showResponsiveDetailFixed;
+  window.renderResponsiveList=renderResponsiveListFixed;
+  window.backResponsiveList=backResponsiveListFixed;
+  window.openResponsiveText=openResponsiveTextFixed;
+
+  function handleListPick(e){
+    var item=e.target && e.target.closest ? e.target.closest('#responsiveList .responsiveItem') : null;
+    if(!item) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+    showResponsiveDetailFixed(item.getAttribute('data-no'));
+  }
+  document.addEventListener('click',handleListPick,true);
+  document.addEventListener('touchend',handleListPick,true);
+  document.addEventListener('pointerup',handleListPick,true);
+  document.addEventListener('input',function(e){
+    if(e.target && e.target.id==='responsiveSearchInput') renderResponsiveListFixed();
+  },true);
+  function apply(){
+    var badge=document.getElementById('cenVersionBadge');
+    if(badge) badge.textContent=VERSION;
+    var panel=document.getElementById('responsivePanel');
+    if(panel && panel.style.display==='flex') setMode(document.getElementById('responsiveDetailView')&&document.getElementById('responsiveDetailView').style.display==='flex'?'detail':'list');
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',apply); else apply();
+})();
+</script>
+
 </body>
 </html>
