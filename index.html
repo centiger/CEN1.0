@@ -2051,10 +2051,11 @@ body.scoreViewerOpen{
 
     <div class="guideSection"><h4><span class="guideNum">9</span> 데이터 내보내기·불러오기</h4>
       <ul class="guideList">
-        <li><b>내보내기</b>를 누르면 휴대폰 내부저장공간에서 선택한 위치에 <b>CEN Bible</b> 폴더를 만들고 백업 파일을 저장합니다.</li>
-        <li>Android Chrome 보안정책상 처음 1회는 저장 위치 선택창이 뜰 수 있습니다. 이후에는 가능한 한 같은 위치의 <b>CEN Bible</b> 폴더를 사용합니다.</li>
-        <li><b>불러오기</b>를 누르면 선택한 내부저장공간의 <b>CEN Bible</b> 폴더를 열고, 표시되는 백업 파일 목록에서 원하는 파일을 선택해 불러옵니다.</li>
-        <li><b>CEN Bible</b> 폴더나 백업 파일이 없으면 “CEN Bible 폴더에 불러오기 파일이 없습니다.”라는 안내가 표시됩니다.</li>
+        <li><b>내보내기</b>를 누르면 백업 파일이 휴대폰의 <b>다운로드</b> 폴더에 저장됩니다.</li>
+        <li>파일명은 <b>CEN_Bible_백업_날짜_시간.json</b> 형식으로 표시되며, 저장 후 파일명을 안내합니다.</li>
+        <li><b>불러오기</b>를 누르면 파일 선택창이 열립니다. 보통 <b>내 파일 &gt; 다운로드</b> 폴더에서 방금 저장한 <b>CEN_Bible_백업_날짜_시간.json</b> 파일을 선택하면 됩니다.</li>
+        <li>파일을 선택하지 않거나 잘못된 파일을 선택하면 “불러오기 파일이 선택되지 않았습니다.” 또는 “백업 파일을 읽지 못했습니다.”라는 안내가 표시됩니다.</li>
+        <li>Android/Chrome 보안정책상 PWA가 휴대폰 루트 폴더를 직접 만들고 자동 탐색하는 방식은 안정적이지 않아, <b>다운로드 저장 + 파일 직접 선택</b> 방식으로 운영합니다.</li>
       </ul>
     </div>
 
@@ -7027,8 +7028,9 @@ function resetMemoSearch(){
 
 
 
-<!-- CEN Bible v1.4.2 final patch: one-line back toast + CEN Bible folder backup/restore -->
-<style id="cen-v142-final-style">
+
+<!-- CEN Bible v1.4.5 final patch: one-line brown back toast + reliable download/import backup -->
+<style id="cen-v145-final-style">
 #cenExitBox{
   width:calc(100vw - 48px) !important;
   max-width:560px !important;
@@ -7052,12 +7054,8 @@ function resetMemoSearch(){
   box-sizing:border-box !important;
 }
 </style>
-<script id="cen-v142-final-script">
+<script id="cen-v145-final-script">
 (function(){
-  const FOLDER_NAME = 'CEN Bible';
-  const DB_NAME = 'cenBibleBackupDB';
-  const STORE_NAME = 'handles';
-  const HANDLE_KEY = 'rootDirHandle';
   const BACKUP_KEYS = [
     'settingsV8','slotsV8','activeSlotV8','notesV8','highlightsV8','readingProgressV8',
     'myVersesCleanV15','themeModeV12','installTipHiddenV12','viewPresetV1','lastBackupAtV1'
@@ -7069,177 +7067,74 @@ function resetMemoSearch(){
   function stamp(){
     const d = new Date();
     const z = n => String(n).padStart(2,'0');
-    return d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes());
+    return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes());
+  }
+  function makeFileName(){
+    return 'CEN_Bible_백업_' + stamp() + '.json';
   }
   function makeBackup(){
     const data = {app:'CEN Bible', backupVersion:1, exportedAt:new Date().toISOString(), localStorage:{}};
     BACKUP_KEYS.forEach(k => { const v = localStorage.getItem(k); if(v !== null) data.localStorage[k] = v; });
     return data;
   }
-  function fallbackDownload(data){
-    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'cen-bible-backup-' + stamp() + '.json';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-  }
-  function openDB(){
-    return new Promise((resolve,reject)=>{
-      const req = indexedDB.open(DB_NAME,1);
-      req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-  async function idbGet(key){
-    const db = await openDB();
-    return new Promise((resolve,reject)=>{
-      const tx = db.transaction(STORE_NAME,'readonly');
-      const req = tx.objectStore(STORE_NAME).get(key);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-  async function idbSet(key,val){
-    const db = await openDB();
-    return new Promise((resolve,reject)=>{
-      const tx = db.transaction(STORE_NAME,'readwrite');
-      tx.objectStore(STORE_NAME).put(val,key);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-  async function ensurePerm(handle, mode){
-    if(!handle || !handle.queryPermission) return false;
-    const opts = {mode};
-    if((await handle.queryPermission(opts)) === 'granted') return true;
-    return (await handle.requestPermission(opts)) === 'granted';
-  }
-  async function getRootHandle(mode){
-    if(!('showDirectoryPicker' in window)) return null;
-    let handle = null;
-    try { handle = await idbGet(HANDLE_KEY); } catch(e) {}
-    if(handle && await ensurePerm(handle, mode)) return handle;
-    handle = await window.showDirectoryPicker({id:'cen-bible-root', mode});
-    await idbSet(HANDLE_KEY, handle);
-    return handle;
-  }
-  async function getCenFolder(mode, create){
-    const root = await getRootHandle(mode);
-    if(!root) return null;
-    return await root.getDirectoryHandle(FOLDER_NAME, {create:!!create});
-  }
-  window.exportCenBibleData = async function(e){
+  window.exportCenBibleData = function(e){
     if(e) e.stopPropagation();
     const data = makeBackup();
-    try{
-      const folder = await getCenFolder('readwrite', true);
-      if(!folder) throw new Error('no-fsa');
-      const fileName = 'cen-bible-backup-' + stamp() + '.json';
-      const fileHandle = await folder.getFileHandle(fileName, {create:true});
-      const writable = await fileHandle.createWritable();
-      await writable.write(JSON.stringify(data,null,2));
-      await writable.close();
-      localStorage.setItem('lastBackupAtV1', new Date().toISOString());
-      if(window.updateBackupStatus) window.updateBackupStatus();
-      notify('CEN Bible 폴더에 백업 파일을 저장했습니다.');
-    }catch(err){
-      fallbackDownload(data);
-      localStorage.setItem('lastBackupAtV1', new Date().toISOString());
-      if(window.updateBackupStatus) window.updateBackupStatus();
-      notify('저장소 직접 저장이 제한되어 다운로드 방식으로 저장했습니다.');
-    }
+    const fileName = makeFileName();
+    const json = JSON.stringify(data,null,2);
+    const blob = new Blob([json], {type:'application/json;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ try{ URL.revokeObjectURL(a.href); }catch(_){} a.remove(); }, 1500);
+    localStorage.setItem('lastBackupAtV1', new Date().toISOString());
+    if(window.updateBackupStatus) window.updateBackupStatus();
+    setTimeout(function(){
+      alert('백업파일이 휴대폰의 다운로드 폴더에 저장되었습니다.\n\n파일명: ' + fileName + '\n\n불러오기할 때 [내 파일 > 다운로드]에서 이 파일을 선택하세요.');
+    }, 250);
   };
-  async function listBackupFilesFromFolder(folder){
-    const list = [];
-    for await (const [name, handle] of folder.entries()){
-      if(handle.kind === 'file' && /cen-bible-backup-.*\.json$/i.test(name)){
-        const file = await handle.getFile();
-        list.push({name, file, time:file.lastModified || 0});
-      }
-    }
-    list.sort((a,b)=>b.time-a.time || b.name.localeCompare(a.name));
-    return list;
-  }
-  function formatBackupTime(ms){
-    if(!ms) return '';
-    const d = new Date(ms);
-    const z = n => String(n).padStart(2,'0');
-    return d.getFullYear()+'.'+z(d.getMonth()+1)+'.'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes());
-  }
-  function chooseBackupFile(list){
-    return new Promise(resolve=>{
-      const old = document.getElementById('cenBackupPicker');
-      if(old) old.remove();
-      const overlay = document.createElement('div');
-      overlay.id = 'cenBackupPicker';
-      overlay.style.cssText = 'position:fixed;inset:0;z-index:1000000;background:rgba(25,18,10,.34);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
-      const panel = document.createElement('div');
-      panel.style.cssText = 'width:min(92vw,520px);max-height:72vh;overflow:auto;background:#fffaf2;border-radius:18px;padding:14px;box-shadow:0 12px 34px rgba(0,0,0,.28);font-family:var(--uiFont, sans-serif);color:#3e2f1c;';
-      const head = document.createElement('div');
-      head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;';
-      const title = document.createElement('div');
-      title.textContent = 'CEN Bible 백업 파일 선택';
-      title.style.cssText = 'font-size:17px;font-weight:900;color:#5a3f28;';
-      const close = document.createElement('button');
-      close.type = 'button'; close.textContent = '×';
-      close.style.cssText = 'width:38px;height:38px;border:0;border-radius:14px;background:#f0e3d1;color:#5a3f28;font-size:24px;line-height:1;';
-      close.onclick = ()=>{ overlay.remove(); resolve(null); };
-      head.appendChild(title); head.appendChild(close); panel.appendChild(head);
-      const note = document.createElement('div');
-      note.textContent = '불러올 파일을 선택하세요.';
-      note.style.cssText = 'font-size:13px;color:#6d5743;margin-bottom:10px;';
-      panel.appendChild(note);
-      list.forEach(item=>{
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.style.cssText = 'width:100%;display:block;text-align:left;margin:7px 0;padding:11px 12px;border:1px solid #e1cfb7;border-radius:13px;background:#fffdf8;color:#3e2f1c;font-size:14px;line-height:1.35;';
-        btn.innerHTML = '<b style="display:block;font-size:14px;margin-bottom:3px;">'+item.name.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</b><span style="font-size:12px;color:#7a6755;">'+formatBackupTime(item.time)+'</span>';
-        btn.onclick = ()=>{ overlay.remove(); resolve(item.file); };
-        panel.appendChild(btn);
-      });
-      overlay.appendChild(panel);
-      document.body.appendChild(overlay);
-    });
-  }
   async function applyBackupFile(file){
+    if(!file){ notify('불러오기 파일이 선택되지 않았습니다.'); return; }
     const text = await file.text();
+    if(!text || !text.trim()) throw new Error('empty-file');
     const parsed = JSON.parse(text);
     const store = parsed && parsed.localStorage;
     if(!store || typeof store !== 'object') throw new Error('invalid');
     const keys = Object.keys(store).filter(k => BACKUP_KEYS.includes(k));
-    if(!keys.length) throw new Error('empty');
+    if(!keys.length) throw new Error('no-backup-keys');
     if(!confirm('백업 데이터를 불러오면 현재 저장된 성구·메모·읽기표·설정이 덮어써집니다. 계속할까요?')) return;
     keys.forEach(k => localStorage.setItem(k, String(store[k])));
     alert('데이터를 불러왔습니다. 앱을 다시 열어 반영합니다.');
     location.reload();
   }
-  window.importCenBibleData = async function(e){
+  window.importCenBibleData = function(e){
     if(e) e.stopPropagation();
-    try{
-      if('showDirectoryPicker' in window){
-        let folder;
-        try { folder = await getCenFolder('read', false); }
-        catch(noFolder){ notify('CEN Bible 폴더에 불러오기 파일이 없습니다.'); return; }
-        const files = await listBackupFilesFromFolder(folder);
-        if(!files.length){ notify('CEN Bible 폴더에 불러오기 파일이 없습니다.'); return; }
-        const file = await chooseBackupFile(files);
-        if(!file) return;
-        await applyBackupFile(file);
-        return;
-      }
-      const input = document.getElementById('cenBibleImportFile');
-      if(input){ input.value=''; input.click(); return; }
-      alert('불러오기 입력창을 찾을 수 없습니다.');
-    }catch(err){
-      if(err && err.name === 'AbortError') return;
-      notify('CEN Bible 폴더에 불러오기 파일이 없습니다.');
-    }
+    const input = document.getElementById('cenBibleImportFile');
+    if(!input) return alert('불러오기 입력창을 찾을 수 없습니다.');
+    alert('백업파일을 선택하세요.\n\n보통 [내 파일 > 다운로드] 폴더에 있습니다.\n파일명은 CEN_Bible_백업_날짜_시간.json 형식입니다.');
+    input.value = '';
+    input.click();
   };
+  function bindImportInput(){
+    const input = document.getElementById('cenBibleImportFile');
+    if(!input || input.__cenV145Bound) return;
+    input.__cenV145Bound = true;
+    input.addEventListener('change', function(){
+      const file = input.files && input.files[0];
+      if(!file){ notify('불러오기 파일이 선택되지 않았습니다.'); return; }
+      applyBackupFile(file).catch(function(){
+        alert('백업 파일을 읽지 못했습니다.\n\n내보내기로 저장한 CEN_Bible_백업_날짜_시간.json 파일인지 확인해 주세요.');
+      });
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindImportInput);
+  else bindImportInput();
+  const badge = document.getElementById('cenVersionBadge');
+  if(badge) badge.textContent = 'v1.4.5';
 })();
 </script>
-
 </body>
 </html>
