@@ -7007,7 +7007,7 @@ function resetMemoSearch(){
 
 <script id="cen-pwa-final-script">
 (function() {
-  var APP_VERSION = "1.2.6";
+  var APP_VERSION = "1.7.4-bplan";
   window.CEN_APP_VERSION = APP_VERSION;
 
   if ("serviceWorker" in navigator) {
@@ -7034,84 +7034,6 @@ function resetMemoSearch(){
       window.location.reload();
     });
   }
-
-  function isStandalone() {
-    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-  }
-
-  var lastBackTime = 0;
-
-  function removeExitBox() {
-    var box = document.getElementById("cenExitBox");
-    if (box) box.remove();
-    var old = document.getElementById("exitConfirmDialog");
-    if (old) old.remove();
-  }
-
-  function showExitBox() {
-    removeExitBox();
-
-    var wrap = document.createElement("div");
-    wrap.id = "cenExitBox";
-    wrap.style.cssText =
-      "position:fixed;left:50%;bottom:72px;transform:translateX(-50%);" +
-      "z-index:999999;background:rgba(60,45,31,.86);color:#fff;" +
-      "padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);" +
-      "font-size:14px;line-height:1.2;min-width:300px;text-align:center;white-space:nowrap;";
-
-    var msg = document.createElement("div");
-    msg.textContent = "한 번 더 뒤로가기를 누르면 종료됩니다.";
-    msg.style.cssText = "font-weight:800;margin-bottom:10px;white-space:nowrap;";
-
-    var cancel = document.createElement("button");
-    cancel.type = "button";
-    cancel.textContent = "취소";
-    cancel.style.cssText =
-      "border:0;border-radius:999px;padding:7px 16px;background:#fff;" +
-      "color:#2b2118;font-weight:800;";
-    cancel.onclick = function() {
-      lastBackTime = 0;
-      removeExitBox();
-      try { history.pushState({ cenBackGuard: true }, "", location.href); } catch(e) {}
-    };
-
-    wrap.appendChild(msg);
-    wrap.appendChild(cancel);
-    document.body.appendChild(wrap);
-
-    clearTimeout(window.__cenExitBoxTimer);
-    window.__cenExitBoxTimer = setTimeout(function() {
-      lastBackTime = 0;
-      removeExitBox();
-    }, 2500);
-  }
-
-  try {
-    history.replaceState({ cenBase: true }, "", location.href);
-    history.pushState({ cenBackGuard: true }, "", location.href);
-  } catch(e) {}
-
-  window.addEventListener("popstate", function() {
-    if (!isStandalone()) return;
-
-    var now = Date.now();
-
-    if (now - lastBackTime < 2500) {
-      removeExitBox();
-      try { history.go(-2); } catch(e) { history.back(); }
-      setTimeout(function() {
-        try { window.close(); } catch(e) {}
-      }, 40);
-      return;
-    }
-
-    lastBackTime = now;
-    showExitBox();
-
-    try {
-      history.pushState({ cenBackGuard: true }, "", location.href);
-    } catch(e) {}
-  });
 })();
 </script>
 
@@ -8588,55 +8510,109 @@ function resetMemoSearch(){
 </script>
 
 
-<script id="cen-v169-back-close-modals">
+<script id="cen-v169-back-close-modals">/* disabled: replaced by B-plan back layer */</script>
+
+
+<script id="cen-v170-back-after-modal-exit-guard">/* disabled: replaced by B-plan back layer */</script>
+
+
+
+<script id="cen-v174-bplan-back-layer">
 (function(){
-  if (window.__cenBackCloseModalsReady) return;
-  window.__cenBackCloseModalsReady = true;
+  if (window.__cenBPlanBackLayerReady) return;
+  window.__cenBPlanBackLayerReady = true;
+
+  var exitOpen = false;
+  var exitTimer = null;
+  var EXIT_MS = 2600;
 
   function isVisible(el){
     if(!el) return false;
     var st = window.getComputedStyle ? getComputedStyle(el) : el.style;
-    return st && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0';
+    return !!(st && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0');
   }
 
-  function hideModalById(id){
-    var el=document.getElementById(id);
-    if(!el) return false;
-    if(id === 'searchPanel' && typeof clearBibleSearch === 'function') clearBibleSearch();
-    el.style.display='none';
-    return true;
+  function removeExitNotice(){
+    exitOpen = false;
+    if(exitTimer){ clearTimeout(exitTimer); exitTimer = null; }
+    var el = document.getElementById('cenBPlanExitNotice');
+    if(el) el.remove();
+    var old1 = document.getElementById('cenExitBox');
+    if(old1) old1.remove();
+    var old2 = document.getElementById('exitConfirmDialog');
+    if(old2) old2.remove();
+    var old3 = document.getElementById('cenV170ExitNotice');
+    if(old3) old3.remove();
   }
 
-  function closeTopCenWindow(){
-    var exit=document.getElementById('exitConfirmDialog');
-    if(isVisible(exit)) return false;
+  function pushGuard(reason){
+    try { history.pushState({ cenBPlanGuard:true, reason:reason || 'guard', t:Date.now() }, '', location.href); } catch(e) {}
+  }
 
-    var score=document.getElementById('scoreViewerOverlay');
+  function resetGuard(reason){
+    try { history.replaceState({ cenBPlanBase:true, reason:reason || 'base', t:Date.now() }, '', location.href); } catch(e) {}
+    pushGuard(reason || 'reset');
+  }
+
+  function showExitNotice(){
+    removeExitNotice();
+    exitOpen = true;
+    var wrap = document.createElement('div');
+    wrap.id = 'cenBPlanExitNotice';
+    wrap.style.cssText = 'position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:2147483647;background:rgba(60,45,31,.88);color:#fff;padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);font-size:14px;line-height:1.2;width:calc(100vw - 48px);max-width:560px;text-align:center;white-space:nowrap;box-sizing:border-box;';
+    var msg = document.createElement('div');
+    msg.textContent = '한 번 더 뒤로가기를 누르면 종료됩니다.';
+    msg.style.cssText = 'font-weight:800;margin-bottom:10px;white-space:nowrap;';
+    var cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.textContent = '취소';
+    cancel.style.cssText = 'border:0;border-radius:999px;padding:7px 16px;background:#fff;color:#2b2118;font-weight:800;';
+    cancel.onclick = function(e){
+      if(e) e.stopPropagation();
+      removeExitNotice();
+      resetGuard('exit-cancel');
+    };
+    wrap.appendChild(msg);
+    wrap.appendChild(cancel);
+    document.body.appendChild(wrap);
+    exitTimer = setTimeout(function(){
+      removeExitNotice();
+      resetGuard('exit-timeout');
+    }, EXIT_MS);
+  }
+
+  function closeTopLayer(){
+    var score = document.getElementById('scoreViewerOverlay');
     if(isVisible(score)){ score.remove(); return true; }
 
-    var responsive=document.getElementById('responsivePanel');
-    var responsiveDetail=document.getElementById('responsiveDetailView');
+    var folder = document.getElementById('cenFolderFlowModal');
+    if(isVisible(folder)){ folder.style.display='none'; return true; }
+
+    var responsive = document.getElementById('responsivePanel');
+    var responsiveDetail = document.getElementById('responsiveDetailView');
     if(isVisible(responsive) && responsiveDetail && responsiveDetail.style.display !== 'none'){
       if(typeof backResponsiveList === 'function') backResponsiveList();
+      else responsiveDetail.style.display = 'none';
       return true;
     }
 
     var modals = Array.prototype.slice.call(document.querySelectorAll('.modal'))
       .filter(function(el){ return isVisible(el); });
     if(modals.length){
-      var top = modals[modals.length-1];
-      if(top && top.id){ hideModalById(top.id); return true; }
-      if(top){ top.style.display='none'; return true; }
+      var top = modals[modals.length - 1];
+      if(top.id === 'searchPanel' && typeof clearBibleSearch === 'function') clearBibleSearch();
+      top.style.display = 'none';
+      return true;
     }
 
-    var sheet=document.getElementById('settingsSheet');
+    var sheet = document.getElementById('settingsSheet');
     if(sheet && sheet.classList && sheet.classList.contains('show')){
       if(typeof closeSettings === 'function') closeSettings();
       else sheet.classList.remove('show');
       return true;
     }
 
-    var plan=document.getElementById('readingPlan');
+    var plan = document.getElementById('readingPlan');
     if(isVisible(plan)){
       if(typeof closeReadingPlan === 'function') closeReadingPlan();
       else plan.style.display='none';
@@ -8646,102 +8622,41 @@ function resetMemoSearch(){
     return false;
   }
 
-  window.__cenCloseTopWindowByBack = closeTopCenWindow;
+  window.__cenCloseTopWindowByBack = closeTopLayer;
+  window.__cenBackResetGuard = resetGuard;
 
-  window.addEventListener('popstate', function(e){
-    if (window.__allowExit) return;
-    if (closeTopCenWindow()){
-      if(e && e.stopImmediatePropagation) e.stopImmediatePropagation();
-      if(e && e.preventDefault) e.preventDefault();
-      window.__exitDialogOpen = false;
-      setTimeout(function(){
-        try { history.pushState({ appGuard:true, modalClosed:true, t:Date.now() }, '', location.href); } catch(err) {}
-      }, 0);
+  function handleBack(e){
+    if(window.__cenBPlanAllowExit) return;
+    if(e && e.preventDefault) e.preventDefault();
+    if(e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+
+    if(closeTopLayer()){
+      removeExitNotice();
+      setTimeout(function(){ resetGuard('layer-closed'); }, 0);
       return false;
     }
-  }, true);
-})();
-</script>
 
-
-<script id="cen-v170-back-after-modal-exit-guard">
-(function(){
-  if (window.__cenV170BackGuardInstalled) return;
-  window.__cenV170BackGuardInstalled = true;
-  var exitOpen = false;
-  var exitAt = 0;
-
-  function removeExitNotice(){
-    exitOpen = false;
-    var el = document.getElementById('cenV170ExitNotice');
-    if (el) el.remove();
-  }
-
-  function showExitNotice(){
-    removeExitNotice();
-    exitOpen = true;
-    exitAt = Date.now();
-    var wrap = document.createElement('div');
-    wrap.id = 'cenV170ExitNotice';
-    wrap.style.cssText = 'position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:2147483647;background:rgba(60,45,31,.86);color:#fff;padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);font-size:14px;line-height:1.2;min-width:300px;text-align:center;white-space:nowrap;';
-    var msg = document.createElement('div');
-    msg.textContent = '한 번 더 뒤로가기를 누르면 종료됩니다.';
-    msg.style.cssText = 'font-weight:800;margin-bottom:10px;white-space:nowrap;';
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = '취소';
-    btn.style.cssText = 'border:0;border-radius:999px;padding:7px 16px;background:#fff;color:#2b2118;font-weight:800;';
-    btn.onclick = function(e){
-      if(e) e.stopPropagation();
+    if(exitOpen){
+      window.__cenBPlanAllowExit = true;
       removeExitNotice();
-      try { history.pushState({ cenV170Guard:true, cancel:true, t:Date.now() }, '', location.href); } catch(err) {}
-    };
-    wrap.appendChild(msg);
-    wrap.appendChild(btn);
-    document.body.appendChild(wrap);
-    clearTimeout(window.__cenV170ExitTimer);
-    window.__cenV170ExitTimer = setTimeout(function(){ removeExitNotice(); }, 2500);
-  }
-
-  function pushGuard(){
-    try { history.pushState({ cenV170Guard:true, t:Date.now() }, '', location.href); } catch(err) {}
-  }
-
-  try {
-    if (!history.state || !history.state.cenV170Guard) pushGuard();
-  } catch(err) {}
-
-  window.addEventListener('popstate', function(e){
-    if (window.__allowExit) return;
-
-    /* 다른 핸들러가 새창을 닫은 직후에는 여기까지 오지 않지만,
-       혹시 남는 경우를 위해 직접 한 번 더 확인합니다. */
-    if (typeof window.__cenCloseTopWindowByBack === 'function') {
-      try {
-        if (window.__cenCloseTopWindowByBack()) {
-          removeExitNotice();
-          pushGuard();
-          if(e && e.preventDefault) e.preventDefault();
-          if(e && e.stopImmediatePropagation) e.stopImmediatePropagation();
-          return false;
-        }
-      } catch(err) {}
-    }
-
-    if (exitOpen && Date.now() - exitAt < 2500) {
-      window.__allowExit = true;
-      removeExitNotice();
-      if(e && e.stopImmediatePropagation) e.stopImmediatePropagation();
-      setTimeout(function(){ try { history.back(); } catch(err) {} }, 0);
+      try { history.go(-2); } catch(err) { try { history.back(); } catch(e2) {} }
+      setTimeout(function(){ try { window.close(); } catch(err) {} }, 80);
       return false;
     }
 
     showExitNotice();
-    pushGuard();
-    if(e && e.preventDefault) e.preventDefault();
-    if(e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+    setTimeout(function(){ pushGuard('exit-notice'); }, 0);
     return false;
-  }, true);
+  }
+
+  // 초기 진입 직후와 load 직후 2번 세팅: 안드로이드 PWA에서 첫 히스토리 누락을 방지합니다.
+  resetGuard('init');
+  window.addEventListener('load', function(){ resetGuard('load'); }, { once:true });
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden && !exitOpen) resetGuard('visible');
+  });
+
+  window.addEventListener('popstate', handleBack, true);
 })();
 </script>
 
