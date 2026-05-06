@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="./manifest.json">
 <title>중범 성경</title>
-<!-- CEN Bible v36: back-exit fix + search reset label -->
+<!-- CEN Bible v35: back-exit fix + search reset label -->
 <style>
 :root {
   --accent:#b8946a;
@@ -3045,9 +3045,75 @@ document.addEventListener('pointerup',()=>{ if(planDrag){ const b=planDragBook; 
 document.addEventListener('touchend',()=>{ if(planDrag){ const b=planDragBook; planDrag=false; planDragBook=null; if(b) finalizePlanDrag(b); } });
 function openPlanSettings() { if(confirm('성경읽기표 전체 기록을 초기화할까요?')){ progress={count:0,checked:{}}; saveProgress(); showPlanAll(); } }
 function setupBackGuard() {
-  // Back handling is provided by cen-v172-unified-back-flow below.
-}
+  if (window.__backGuardReady) return;
+  window.__backGuardReady = true;
+  window.__allowExit = false;
+  window.__exitDialogOpen = false;
 
+  // PWA 뒤로가기 처리 원칙:
+  // 최초에는 가드 히스토리를 1개만 쌓고,
+  // 뒤로가기 시 확인창을 띄운 뒤 '종료'를 누르면 가드를 다시 쌓지 않고 실제 뒤로가기로 앱을 빠져나갑니다.
+  try {
+    history.replaceState({ appRoot: true }, '', location.href);
+    history.pushState({ appGuard: true }, '', location.href);
+  } catch(e) {}
+
+  function ensureExitDialog(){
+    let dlg = document.getElementById('exitConfirmDialog');
+    if (dlg) return dlg;
+
+    dlg = document.createElement('div');
+    dlg.id = 'exitConfirmDialog';
+    dlg.innerHTML = `
+      <div class="exitBox">
+        <div class="exitTitle">앱을 종료하시겠습니까?</div>
+        <div class="exitBtns">
+          <button type="button" id="exitNoBtn">취소</button>
+          <button type="button" id="exitYesBtn">종료</button>
+        </div>
+      </div>`;
+    document.body.appendChild(dlg);
+
+    document.getElementById('exitNoBtn').onclick = function(e){
+      e.stopPropagation();
+      window.__exitDialogOpen = false;
+      dlg.style.display = 'none';
+      try { history.pushState({ appGuard: true, t: Date.now() }, '', location.href); } catch(err) {}
+    };
+
+    document.getElementById('exitYesBtn').onclick = function(e){
+      e.stopPropagation();
+      window.__allowExit = true;
+      window.__exitDialogOpen = false;
+      dlg.style.display = 'none';
+
+      // 현재 위치는 가드가 빠진 root 상태입니다. 여기서 한 번 더 뒤로가면 PWA가 종료됩니다.
+      // 일부 삼성/크롬 환경에서 한 번에 안 빠지는 경우를 대비해 짧게 추가 back을 보냅니다.
+      try { history.back(); } catch(err) {}
+      setTimeout(function(){ try { history.back(); } catch(err) {} }, 120);
+      setTimeout(function(){ try { window.close(); } catch(err) {} }, 220);
+    };
+
+    dlg.addEventListener('click', function(e){
+      if(e.target === dlg){
+        window.__exitDialogOpen = false;
+        dlg.style.display = 'none';
+        try { history.pushState({ appGuard: true, t: Date.now() }, '', location.href); } catch(err) {}
+      }
+    });
+
+    return dlg;
+  }
+
+  window.addEventListener('popstate', function(){
+    if (window.__allowExit) return;
+    if (window.__exitDialogOpen) return;
+    window.__exitDialogOpen = true;
+    const dlg = ensureExitDialog();
+    dlg.style.display = 'flex';
+    // 여기서 pushState를 즉시 다시 쌓지 않습니다. 그래야 '종료' 버튼이 실제 앱 종료로 이어집니다.
+  });
+}
 
 
 /* v13 overrides */
@@ -6941,7 +7007,7 @@ function resetMemoSearch(){
 
 <script id="cen-pwa-final-script">
 (function() {
-  var APP_VERSION = "1.2.6";
+  var APP_VERSION = "1.7.4-bplan";
   window.CEN_APP_VERSION = APP_VERSION;
 
   if ("serviceWorker" in navigator) {
@@ -6968,85 +7034,6 @@ function resetMemoSearch(){
       window.location.reload();
     });
   }
-
-  function isStandalone() {
-    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-  }
-
-  var lastBackTime = 0;
-
-  function removeExitBox() {
-    var box = document.getElementById("cenExitBox");
-    if (box) box.remove();
-    var old = document.getElementById("exitConfirmDialog");
-    if (old) old.remove();
-  }
-
-  function showExitBox() {
-    removeExitBox();
-
-    var wrap = document.createElement("div");
-    wrap.id = "cenExitBox";
-    wrap.style.cssText =
-      "position:fixed;left:50%;bottom:72px;transform:translateX(-50%);" +
-      "z-index:999999;background:rgba(60,45,31,.86);color:#fff;" +
-      "padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);" +
-      "font-size:14px;line-height:1.2;min-width:300px;text-align:center;white-space:nowrap;";
-
-    var msg = document.createElement("div");
-    msg.textContent = "한 번 더 뒤로가기를 누르면 종료됩니다.";
-    msg.style.cssText = "font-weight:800;margin-bottom:10px;white-space:nowrap;";
-
-    var cancel = document.createElement("button");
-    cancel.type = "button";
-    cancel.textContent = "취소";
-    cancel.style.cssText =
-      "border:0;border-radius:999px;padding:7px 16px;background:#fff;" +
-      "color:#2b2118;font-weight:800;";
-    cancel.onclick = function() {
-      lastBackTime = 0;
-      removeExitBox();
-      try { history.pushState({ cenBackGuard: true }, "", location.href); } catch(e) {}
-    };
-
-    wrap.appendChild(msg);
-    wrap.appendChild(cancel);
-    document.body.appendChild(wrap);
-
-    clearTimeout(window.__cenExitBoxTimer);
-    window.__cenExitBoxTimer = setTimeout(function() {
-      lastBackTime = 0;
-      removeExitBox();
-    }, 2500);
-  }
-
-  try {
-    history.replaceState({ cenBase: true }, "", location.href);
-    history.pushState({ cenBackGuard: true }, "", location.href);
-  } catch(e) {}
-
-  window.addEventListener("popstate", function() {
-    return; // disabled: unified back flow handles Android/PWA back button
-    if (!isStandalone()) return;
-
-    var now = Date.now();
-
-    if (now - lastBackTime < 2500) {
-      removeExitBox();
-      try { history.go(-2); } catch(e) { history.back(); }
-      setTimeout(function() {
-        try { window.close(); } catch(e) {}
-      }, 40);
-      return;
-    }
-
-    lastBackTime = now;
-    showExitBox();
-
-    try {
-      history.pushState({ cenBackGuard: true }, "", location.href);
-    } catch(e) {}
-  });
 })();
 </script>
 
@@ -8523,151 +8510,156 @@ function resetMemoSearch(){
 </script>
 
 
+<script id="cen-v169-back-close-modals">/* disabled: replaced by B-plan back layer */</script>
+
+
+<script id="cen-v170-back-after-modal-exit-guard">/* disabled: replaced by B-plan back layer */</script>
 
 
 
-
-<script id="cen-v173-back-flow-final">
+<script id="cen-v174-bplan-back-layer">
 (function(){
-  if (window.__cenV173BackFlowFinal) return;
-  window.__cenV173BackFlowFinal = true;
+  if (window.__cenBPlanBackLayerReady) return;
+  window.__cenBPlanBackLayerReady = true;
 
   var exitOpen = false;
-  var exitAt = 0;
+  var exitTimer = null;
   var EXIT_MS = 2600;
 
-  function visible(el){
+  function isVisible(el){
     if(!el) return false;
-    var st = getComputedStyle(el);
-    if(!st || st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0') return false;
-    return (el.offsetWidth > 0 || el.offsetHeight > 0 || st.position === 'fixed');
+    var st = window.getComputedStyle ? getComputedStyle(el) : el.style;
+    return !!(st && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0');
   }
 
-  function clearNotice(){
+  function removeExitNotice(){
     exitOpen = false;
-    clearTimeout(window.__cenV173ExitTimer);
-    ['cenV173ExitNotice','cenV172ExitNotice','cenV170ExitNotice','cenExitBox','exitConfirmDialog'].forEach(function(id){
-      var el = document.getElementById(id);
-      if(el) el.remove();
-    });
+    if(exitTimer){ clearTimeout(exitTimer); exitTimer = null; }
+    var el = document.getElementById('cenBPlanExitNotice');
+    if(el) el.remove();
+    var old1 = document.getElementById('cenExitBox');
+    if(old1) old1.remove();
+    var old2 = document.getElementById('exitConfirmDialog');
+    if(old2) old2.remove();
+    var old3 = document.getElementById('cenV170ExitNotice');
+    if(old3) old3.remove();
   }
 
-  function showNotice(){
-    clearNotice();
+  function pushGuard(reason){
+    try { history.pushState({ cenBPlanGuard:true, reason:reason || 'guard', t:Date.now() }, '', location.href); } catch(e) {}
+  }
+
+  function resetGuard(reason){
+    try { history.replaceState({ cenBPlanBase:true, reason:reason || 'base', t:Date.now() }, '', location.href); } catch(e) {}
+    pushGuard(reason || 'reset');
+  }
+
+  function showExitNotice(){
+    removeExitNotice();
     exitOpen = true;
-    exitAt = Date.now();
     var wrap = document.createElement('div');
-    wrap.id = 'cenV173ExitNotice';
-    wrap.style.cssText = 'position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:2147483647;background:rgba(60,45,31,.88);color:#fff;padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.30);font-size:14px;line-height:1.2;min-width:300px;text-align:center;white-space:nowrap;';
+    wrap.id = 'cenBPlanExitNotice';
+    wrap.style.cssText = 'position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:2147483647;background:rgba(60,45,31,.88);color:#fff;padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);font-size:14px;line-height:1.2;width:calc(100vw - 48px);max-width:560px;text-align:center;white-space:nowrap;box-sizing:border-box;';
     var msg = document.createElement('div');
     msg.textContent = '한 번 더 뒤로가기를 누르면 종료됩니다.';
     msg.style.cssText = 'font-weight:800;margin-bottom:10px;white-space:nowrap;';
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = '취소';
-    btn.style.cssText = 'border:0;border-radius:999px;padding:7px 16px;background:#fff;color:#2b2118;font-weight:800;';
-    btn.onclick = function(ev){ if(ev) ev.stopPropagation(); clearNotice(); ensureGuard('cancel'); };
+    var cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.textContent = '취소';
+    cancel.style.cssText = 'border:0;border-radius:999px;padding:7px 16px;background:#fff;color:#2b2118;font-weight:800;';
+    cancel.onclick = function(e){
+      if(e) e.stopPropagation();
+      removeExitNotice();
+      resetGuard('exit-cancel');
+    };
     wrap.appendChild(msg);
-    wrap.appendChild(btn);
+    wrap.appendChild(cancel);
     document.body.appendChild(wrap);
-    window.__cenV173ExitTimer = setTimeout(function(){ clearNotice(); ensureGuard('timeout'); }, EXIT_MS);
+    exitTimer = setTimeout(function(){
+      removeExitNotice();
+      resetGuard('exit-timeout');
+    }, EXIT_MS);
   }
 
-  function pushGuard(label){
-    try { history.pushState({ cenBackGuardV173:true, label:label||'guard', t:Date.now() }, '', location.href); } catch(e) {}
-  }
-
-  function ensureGuard(label){
-    pushGuard(label || 'ensure');
-    setTimeout(function(){ pushGuard((label || 'ensure') + '-30'); }, 30);
-    setTimeout(function(){ pushGuard((label || 'ensure') + '-160'); }, 160);
-  }
-
-  function seedInitial(){
-    try { history.replaceState({ cenBaseV173:true, t:Date.now() }, '', location.href); } catch(e) {}
-    ensureGuard('initial');
-  }
-
-  function closeById(id){
-    var el = document.getElementById(id);
-    if(!el) return false;
-    if(id === 'searchPanel' && typeof clearBibleSearch === 'function') { try { clearBibleSearch(); } catch(e) {} }
-    el.style.display = 'none';
-    return true;
-  }
-
-  function closeTopOpenedWindow(){
+  function closeTopLayer(){
     var score = document.getElementById('scoreViewerOverlay');
-    if(visible(score)){ score.remove(); return true; }
+    if(isVisible(score)){ score.remove(); return true; }
+
+    var folder = document.getElementById('cenFolderFlowModal');
+    if(isVisible(folder)){ folder.style.display='none'; return true; }
 
     var responsive = document.getElementById('responsivePanel');
     var responsiveDetail = document.getElementById('responsiveDetailView');
-    if(visible(responsive) && responsiveDetail && responsiveDetail.style.display !== 'none'){
-      if(typeof backResponsiveList === 'function') { try { backResponsiveList(); } catch(e) {} }
+    if(isVisible(responsive) && responsiveDetail && responsiveDetail.style.display !== 'none'){
+      if(typeof backResponsiveList === 'function') backResponsiveList();
+      else responsiveDetail.style.display = 'none';
       return true;
     }
 
-    var modals = Array.prototype.slice.call(document.querySelectorAll('.modal')).filter(visible);
+    var modals = Array.prototype.slice.call(document.querySelectorAll('.modal'))
+      .filter(function(el){ return isVisible(el); });
     if(modals.length){
-      var top = modals[modals.length-1];
-      if(top.id) return closeById(top.id);
+      var top = modals[modals.length - 1];
+      if(top.id === 'searchPanel' && typeof clearBibleSearch === 'function') clearBibleSearch();
       top.style.display = 'none';
       return true;
     }
 
     var sheet = document.getElementById('settingsSheet');
     if(sheet && sheet.classList && sheet.classList.contains('show')){
-      if(typeof closeSettings === 'function') { try { closeSettings(); } catch(e) { sheet.classList.remove('show'); } }
+      if(typeof closeSettings === 'function') closeSettings();
       else sheet.classList.remove('show');
       return true;
     }
 
     var plan = document.getElementById('readingPlan');
-    if(visible(plan)){
-      if(typeof closeReadingPlan === 'function') { try { closeReadingPlan(); } catch(e) { plan.style.display='none'; } }
-      else plan.style.display = 'none';
+    if(isVisible(plan)){
+      if(typeof closeReadingPlan === 'function') closeReadingPlan();
+      else plan.style.display='none';
       return true;
     }
+
     return false;
   }
 
-  window.__cenCloseTopWindowByBack = closeTopOpenedWindow;
+  window.__cenCloseTopWindowByBack = closeTopLayer;
+  window.__cenBackResetGuard = resetGuard;
 
-  function onBack(ev){
-    if(window.__cenAllowRealExit) return;
+  function handleBack(e){
+    if(window.__cenBPlanAllowExit) return;
+    if(e && e.preventDefault) e.preventDefault();
+    if(e && e.stopImmediatePropagation) e.stopImmediatePropagation();
 
-    if(closeTopOpenedWindow()){
-      clearNotice();
-      ensureGuard('after-window-close');
-      if(ev && ev.preventDefault) ev.preventDefault();
-      if(ev && ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+    if(closeTopLayer()){
+      removeExitNotice();
+      setTimeout(function(){ resetGuard('layer-closed'); }, 0);
       return false;
     }
 
-    if(exitOpen && Date.now() - exitAt < EXIT_MS){
-      window.__cenAllowRealExit = true;
-      clearNotice();
-      if(ev && ev.stopImmediatePropagation) ev.stopImmediatePropagation();
-      setTimeout(function(){ try { history.back(); } catch(e) {} }, 0);
+    if(exitOpen){
+      window.__cenBPlanAllowExit = true;
+      removeExitNotice();
+      try { history.go(-2); } catch(err) { try { history.back(); } catch(e2) {} }
+      setTimeout(function(){ try { window.close(); } catch(err) {} }, 80);
       return false;
     }
 
-    showNotice();
-    ensureGuard('exit-notice');
-    if(ev && ev.preventDefault) ev.preventDefault();
-    if(ev && ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+    showExitNotice();
+    setTimeout(function(){ pushGuard('exit-notice'); }, 0);
     return false;
   }
 
-  // 최대한 이른 시점과 실제 화면 복귀 시점 모두에서 가드 재설정
-  seedInitial();
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ ensureGuard('dom-ready'); }, {once:true});
-  else ensureGuard('dom-ready-now');
-  window.addEventListener('pageshow', function(){ if(!window.__cenAllowRealExit) ensureGuard('pageshow'); });
-  window.addEventListener('focus', function(){ if(!window.__cenAllowRealExit) ensureGuard('focus'); });
-  window.addEventListener('popstate', onBack, true);
+  // 초기 진입 직후와 load 직후 2번 세팅: 안드로이드 PWA에서 첫 히스토리 누락을 방지합니다.
+  resetGuard('init');
+  window.addEventListener('load', function(){ resetGuard('load'); }, { once:true });
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden && !exitOpen) resetGuard('visible');
+  });
+
+  window.addEventListener('popstate', handleBack, true);
 })();
 </script>
+
 </body>
 </html>
 
