@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="./manifest.json">
 <title>중범 성경</title>
-<!-- CEN Bible v35: back-exit fix + search reset label -->
+<!-- CEN Bible v36: immediate back guard fix -->
 <style>
 :root {
   --accent:#b8946a;
@@ -3069,6 +3069,9 @@ function setupBackGuard() {
       return true;
     }
 
+    var flow = document.getElementById('cenFolderFlowModal');
+    if (visible(flow)) { flow.style.display = 'none'; return true; }
+
     var modals = Array.prototype.slice.call(document.querySelectorAll('.modal'))
       .filter(function(el){ return visible(el); });
     if (modals.length) {
@@ -3092,55 +3095,18 @@ function setupBackGuard() {
       return true;
     }
 
-    var flow = document.getElementById('cenFolderFlowModal');
-    if (visible(flow)) { flow.style.display = 'none'; return true; }
-
     return false;
   }
 
   window.__cenCloseTopWindowByBack = closeTopWindow;
 
-  function pushGuard() {
-    try { history.pushState({ cenUnifiedBackGuard: true, t: Date.now() }, '', location.href); } catch(e) {}
+  function pushMainGuard() {
+    try { history.pushState({ cenMainBackGuard: true, t: Date.now() }, '', location.href); } catch(e) {}
   }
 
-  // 새창이 열릴 때도 히스토리 한 칸을 추가해 둡니다.
-  // 그러면 뒤로가기 1회는 창 닫기에만 쓰이고, 그 다음 뒤로가기는 종료 안내로 안정적으로 넘어갑니다.
-  var modalGuardArmed = false;
-  function hasOpenWindowForBackGuard() {
-    try { return !!closeTopWindow.__peek ? closeTopWindow.__peek() : false; } catch(e) { return false; }
-  }
-  closeTopWindow.__peek = function(){
-    var score = document.getElementById('scoreViewerOverlay');
-    if (visible(score)) return true;
-    var responsive = document.getElementById('responsivePanel');
-    var detail = document.getElementById('responsiveDetailView');
-    if (visible(responsive) && detail && detail.style.display !== 'none') return true;
-    var modals = Array.prototype.slice.call(document.querySelectorAll('.modal')).filter(function(el){ return visible(el); });
-    if (modals.length) return true;
-    var sheet = document.getElementById('settingsSheet');
-    if (sheet && sheet.classList && sheet.classList.contains('show')) return true;
-    var plan = document.getElementById('readingPlan');
-    if (visible(plan)) return true;
-    var flow = document.getElementById('cenFolderFlowModal');
-    if (visible(flow)) return true;
-    return false;
-  };
-  function armModalGuardIfNeeded() {
-    if (!closeTopWindow.__peek()) { modalGuardArmed = false; return; }
-    if (modalGuardArmed) return;
-    modalGuardArmed = true;
-    try { history.pushState({ cenModalGuard: true, t: Date.now() }, '', location.href); } catch(e) {}
-  }
-  try {
-    var mo = new MutationObserver(function(){ setTimeout(armModalGuardIfNeeded, 0); });
-    mo.observe(document.body, { subtree:true, attributes:true, attributeFilter:['style','class'] });
-    document.addEventListener('click', function(){ setTimeout(armModalGuardIfNeeded, 0); }, true);
-  } catch(e) {}
-
-  function resetRootAndGuard() {
-    try { history.replaceState({ cenUnifiedRoot: true, t: Date.now() }, '', location.href); } catch(e) {}
-    pushGuard();
+  function installMainGuard() {
+    try { history.replaceState({ cenMainRoot: true, t: Date.now() }, '', location.href); } catch(e) {}
+    pushMainGuard();
   }
 
   function removeExitNotice() {
@@ -3166,58 +3132,54 @@ function setupBackGuard() {
     cancel.onclick = function(e){
       if(e) e.stopPropagation();
       removeExitNotice();
-      resetRootAndGuard();
+      installMainGuard();
     };
     wrap.appendChild(msg);
     wrap.appendChild(cancel);
     document.body.appendChild(wrap);
-    exitTimer = setTimeout(function(){ removeExitNotice(); resetRootAndGuard(); }, 2500);
+    exitTimer = setTimeout(function(){ removeExitNotice(); installMainGuard(); }, 2500);
   }
 
-  resetRootAndGuard();
+  // 핵심 설계:
+  // 1) 앱 진입 시 메인 화면용 뒤로가기 가드 1칸을 항상 둡니다.
+  // 2) 새창/팝업이 열린 상태에서 뒤로가기가 들어오면, popstate 시작 즉시 가드를 먼저 복구합니다.
+  // 3) 그 다음 새창을 닫습니다. 그래서 다음 뒤로가기는 앱 종료가 아니라 종료안내창으로 갑니다.
+  // 4) 열린 창이 없으면 종료안내창을 띄우고 다시 가드를 둡니다.
+  installMainGuard();
 
   window.addEventListener('popstate', function(e){
     if (allowRealExit) return;
-
-    if (closeTopWindow()) {
-      removeExitNotice();
-      // 핵심 수정: 뒤로가기 버튼으로 창을 닫은 직후에도
-      // 현재 화면 위에 새 히스토리 가드를 즉시 다시 쌓습니다.
-      // setTimeout만 쓰면 일부 Android/PWA 환경에서 다음 뒤로가기가 앱 종료로 빠지는 경우가 있어
-      // 동기 pushState + 지연 보강을 함께 적용합니다.
-      modalGuardArmed = false;
-      // v174 핵심 보강: 뒤로가기로 새창을 닫은 뒤에도 메인 화면에
-      // '종료 안내용 가드'가 반드시 남도록 root+guard를 재구성합니다.
-      // 일부 Android Chrome PWA는 popstate 안의 단일 pushState를 무시하거나
-      // 다음 뒤로가기를 앱 종료로 바로 넘기는 경우가 있어 2단계로 심습니다.
-      function reinstallMainExitGuard(){
-        try { history.replaceState({ cenUnifiedRoot: true, afterBackCloseRoot: true, t: Date.now() }, '', location.href); } catch(err) {}
-        try { history.pushState({ cenUnifiedBackGuard: true, afterBackCloseGuard: true, t: Date.now() }, '', location.href); } catch(err) {}
-      }
-      reinstallMainExitGuard();
-      setTimeout(reinstallMainExitGuard, 80);
-      setTimeout(reinstallMainExitGuard, 260);
-      if (e && e.preventDefault) e.preventDefault();
-      if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
-      return false;
-    }
 
     if (exitOpen) {
       allowRealExit = true;
       removeExitNotice();
       if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
       setTimeout(function(){ try { history.back(); } catch(err) {} }, 0);
-      setTimeout(function(){ try { window.close(); } catch(err) {} }, 160);
+      setTimeout(function(){ try { window.close(); } catch(err) {} }, 180);
+      return false;
+    }
+
+    // Android Chrome PWA 대응: 뒤로가기 이벤트가 들어오는 순간 history가 이미 한 칸 빠진 상태입니다.
+    // 따라서 창 닫기보다 먼저 가드를 즉시 재삽입해야 다음 뒤로가기가 앱 종료로 빠지지 않습니다.
+    pushMainGuard();
+
+    if (closeTopWindow()) {
+      removeExitNotice();
+      // 렌더링/스타일 변경 후에도 가드가 유지되도록 보강합니다.
+      setTimeout(pushMainGuard, 60);
+      setTimeout(pushMainGuard, 180);
+      if (e && e.preventDefault) e.preventDefault();
+      if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
       return false;
     }
 
     showExitNotice();
-    pushGuard();
     if (e && e.preventDefault) e.preventDefault();
     if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
     return false;
   }, true);
 }
+
 
 
 
