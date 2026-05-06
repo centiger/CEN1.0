@@ -3045,75 +3045,177 @@ document.addEventListener('pointerup',()=>{ if(planDrag){ const b=planDragBook; 
 document.addEventListener('touchend',()=>{ if(planDrag){ const b=planDragBook; planDrag=false; planDragBook=null; if(b) finalizePlanDrag(b); } });
 function openPlanSettings() { if(confirm('성경읽기표 전체 기록을 초기화할까요?')){ progress={count:0,checked:{}}; saveProgress(); showPlanAll(); } }
 function setupBackGuard() {
-  if (window.__backGuardReady) return;
-  window.__backGuardReady = true;
-  window.__allowExit = false;
-  window.__exitDialogOpen = false;
+  if (window.__cenUnifiedBackReady) return;
+  window.__cenUnifiedBackReady = true;
 
-  // PWA 뒤로가기 처리 원칙:
-  // 최초에는 가드 히스토리를 1개만 쌓고,
-  // 뒤로가기 시 확인창을 띄운 뒤 '종료'를 누르면 가드를 다시 쌓지 않고 실제 뒤로가기로 앱을 빠져나갑니다.
-  try {
-    history.replaceState({ appRoot: true }, '', location.href);
-    history.pushState({ appGuard: true }, '', location.href);
-  } catch(e) {}
+  var exitOpen = false;
+  var allowRealExit = false;
+  var exitTimer = null;
 
-  function ensureExitDialog(){
-    let dlg = document.getElementById('exitConfirmDialog');
-    if (dlg) return dlg;
-
-    dlg = document.createElement('div');
-    dlg.id = 'exitConfirmDialog';
-    dlg.innerHTML = `
-      <div class="exitBox">
-        <div class="exitTitle">앱을 종료하시겠습니까?</div>
-        <div class="exitBtns">
-          <button type="button" id="exitNoBtn">취소</button>
-          <button type="button" id="exitYesBtn">종료</button>
-        </div>
-      </div>`;
-    document.body.appendChild(dlg);
-
-    document.getElementById('exitNoBtn').onclick = function(e){
-      e.stopPropagation();
-      window.__exitDialogOpen = false;
-      dlg.style.display = 'none';
-      try { history.pushState({ appGuard: true, t: Date.now() }, '', location.href); } catch(err) {}
-    };
-
-    document.getElementById('exitYesBtn').onclick = function(e){
-      e.stopPropagation();
-      window.__allowExit = true;
-      window.__exitDialogOpen = false;
-      dlg.style.display = 'none';
-
-      // 현재 위치는 가드가 빠진 root 상태입니다. 여기서 한 번 더 뒤로가면 PWA가 종료됩니다.
-      // 일부 삼성/크롬 환경에서 한 번에 안 빠지는 경우를 대비해 짧게 추가 back을 보냅니다.
-      try { history.back(); } catch(err) {}
-      setTimeout(function(){ try { history.back(); } catch(err) {} }, 120);
-      setTimeout(function(){ try { window.close(); } catch(err) {} }, 220);
-    };
-
-    dlg.addEventListener('click', function(e){
-      if(e.target === dlg){
-        window.__exitDialogOpen = false;
-        dlg.style.display = 'none';
-        try { history.pushState({ appGuard: true, t: Date.now() }, '', location.href); } catch(err) {}
-      }
-    });
-
-    return dlg;
+  function visible(el) {
+    if (!el) return false;
+    var st = window.getComputedStyle ? getComputedStyle(el) : el.style;
+    return !!st && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0';
   }
 
-  window.addEventListener('popstate', function(){
-    if (window.__allowExit) return;
-    if (window.__exitDialogOpen) return;
-    window.__exitDialogOpen = true;
-    const dlg = ensureExitDialog();
-    dlg.style.display = 'flex';
-    // 여기서 pushState를 즉시 다시 쌓지 않습니다. 그래야 '종료' 버튼이 실제 앱 종료로 이어집니다.
-  });
+  function closeTopWindow() {
+    var score = document.getElementById('scoreViewerOverlay');
+    if (visible(score)) { score.remove(); return true; }
+
+    var responsive = document.getElementById('responsivePanel');
+    var responsiveDetail = document.getElementById('responsiveDetailView');
+    if (visible(responsive) && responsiveDetail && responsiveDetail.style.display !== 'none') {
+      if (typeof backResponsiveList === 'function') backResponsiveList();
+      return true;
+    }
+
+    var modals = Array.prototype.slice.call(document.querySelectorAll('.modal'))
+      .filter(function(el){ return visible(el); });
+    if (modals.length) {
+      var top = modals[modals.length - 1];
+      if (top.id === 'searchPanel' && typeof clearBibleSearch === 'function') clearBibleSearch();
+      top.style.display = 'none';
+      return true;
+    }
+
+    var sheet = document.getElementById('settingsSheet');
+    if (sheet && sheet.classList && sheet.classList.contains('show')) {
+      if (typeof closeSettings === 'function') closeSettings();
+      else sheet.classList.remove('show');
+      return true;
+    }
+
+    var plan = document.getElementById('readingPlan');
+    if (visible(plan)) {
+      if (typeof closeReadingPlan === 'function') closeReadingPlan();
+      else plan.style.display = 'none';
+      return true;
+    }
+
+    var flow = document.getElementById('cenFolderFlowModal');
+    if (visible(flow)) { flow.style.display = 'none'; return true; }
+
+    return false;
+  }
+
+  window.__cenCloseTopWindowByBack = closeTopWindow;
+
+  function pushGuard() {
+    try { history.pushState({ cenUnifiedBackGuard: true, t: Date.now() }, '', location.href); } catch(e) {}
+  }
+
+  // 새창이 열릴 때도 히스토리 한 칸을 추가해 둡니다.
+  // 그러면 뒤로가기 1회는 창 닫기에만 쓰이고, 그 다음 뒤로가기는 종료 안내로 안정적으로 넘어갑니다.
+  var modalGuardArmed = false;
+  function hasOpenWindowForBackGuard() {
+    try { return !!closeTopWindow.__peek ? closeTopWindow.__peek() : false; } catch(e) { return false; }
+  }
+  closeTopWindow.__peek = function(){
+    var score = document.getElementById('scoreViewerOverlay');
+    if (visible(score)) return true;
+    var responsive = document.getElementById('responsivePanel');
+    var detail = document.getElementById('responsiveDetailView');
+    if (visible(responsive) && detail && detail.style.display !== 'none') return true;
+    var modals = Array.prototype.slice.call(document.querySelectorAll('.modal')).filter(function(el){ return visible(el); });
+    if (modals.length) return true;
+    var sheet = document.getElementById('settingsSheet');
+    if (sheet && sheet.classList && sheet.classList.contains('show')) return true;
+    var plan = document.getElementById('readingPlan');
+    if (visible(plan)) return true;
+    var flow = document.getElementById('cenFolderFlowModal');
+    if (visible(flow)) return true;
+    return false;
+  };
+  function armModalGuardIfNeeded() {
+    if (!closeTopWindow.__peek()) { modalGuardArmed = false; return; }
+    if (modalGuardArmed) return;
+    modalGuardArmed = true;
+    try { history.pushState({ cenModalGuard: true, t: Date.now() }, '', location.href); } catch(e) {}
+  }
+  try {
+    var mo = new MutationObserver(function(){ setTimeout(armModalGuardIfNeeded, 0); });
+    mo.observe(document.body, { subtree:true, attributes:true, attributeFilter:['style','class'] });
+    document.addEventListener('click', function(){ setTimeout(armModalGuardIfNeeded, 0); }, true);
+  } catch(e) {}
+
+  function resetRootAndGuard() {
+    try { history.replaceState({ cenUnifiedRoot: true, t: Date.now() }, '', location.href); } catch(e) {}
+    pushGuard();
+  }
+
+  function removeExitNotice() {
+    exitOpen = false;
+    clearTimeout(exitTimer);
+    var el = document.getElementById('cenUnifiedExitNotice');
+    if (el) el.remove();
+  }
+
+  function showExitNotice() {
+    removeExitNotice();
+    exitOpen = true;
+    var wrap = document.createElement('div');
+    wrap.id = 'cenUnifiedExitNotice';
+    wrap.style.cssText = 'position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:2147483647;background:rgba(60,45,31,.86);color:#fff;padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);font-size:14px;line-height:1.2;min-width:300px;text-align:center;white-space:nowrap;';
+    var msg = document.createElement('div');
+    msg.textContent = '한 번 더 뒤로가기를 누르면 종료됩니다.';
+    msg.style.cssText = 'font-weight:800;margin-bottom:10px;white-space:nowrap;';
+    var cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.textContent = '취소';
+    cancel.style.cssText = 'border:0;border-radius:999px;padding:7px 16px;background:#fff;color:#2b2118;font-weight:800;';
+    cancel.onclick = function(e){
+      if(e) e.stopPropagation();
+      removeExitNotice();
+      resetRootAndGuard();
+    };
+    wrap.appendChild(msg);
+    wrap.appendChild(cancel);
+    document.body.appendChild(wrap);
+    exitTimer = setTimeout(function(){ removeExitNotice(); resetRootAndGuard(); }, 2500);
+  }
+
+  resetRootAndGuard();
+
+  window.addEventListener('popstate', function(e){
+    if (allowRealExit) return;
+
+    if (closeTopWindow()) {
+      removeExitNotice();
+      // 핵심 수정: 뒤로가기 버튼으로 창을 닫은 직후에도
+      // 현재 화면 위에 새 히스토리 가드를 즉시 다시 쌓습니다.
+      // setTimeout만 쓰면 일부 Android/PWA 환경에서 다음 뒤로가기가 앱 종료로 빠지는 경우가 있어
+      // 동기 pushState + 지연 보강을 함께 적용합니다.
+      modalGuardArmed = false;
+      try { history.pushState({ cenUnifiedBackGuard: true, afterBackClose: true, t: Date.now() }, '', location.href); } catch(err) {}
+      setTimeout(function(){
+        try {
+          if (!document.getElementById('cenUnifiedExitNotice')) {
+            history.pushState({ cenUnifiedBackGuard: true, afterBackCloseDelay: true, t: Date.now() }, '', location.href);
+          }
+        } catch(err) {}
+      }, 30);
+      if (e && e.preventDefault) e.preventDefault();
+      if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+      return false;
+    }
+
+    if (exitOpen) {
+      allowRealExit = true;
+      removeExitNotice();
+      if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+      setTimeout(function(){ try { history.back(); } catch(err) {} }, 0);
+      setTimeout(function(){ try { window.close(); } catch(err) {} }, 160);
+      return false;
+    }
+
+    showExitNotice();
+    pushGuard();
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+    return false;
+  }, true);
 }
+
 
 
 /* v13 overrides */
@@ -7007,7 +7109,7 @@ function resetMemoSearch(){
 
 <script id="cen-pwa-final-script">
 (function() {
-  var APP_VERSION = "1.7.4-bplan";
+  var APP_VERSION = "1.2.6";
   window.CEN_APP_VERSION = APP_VERSION;
 
   if ("serviceWorker" in navigator) {
@@ -7034,6 +7136,11 @@ function resetMemoSearch(){
       window.location.reload();
     });
   }
+
+  function isStandalone() {
+    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  }
+  // Back-button handling is managed by setupBackGuard().
 })();
 </script>
 
@@ -8509,156 +8616,6 @@ function resetMemoSearch(){
 })();
 </script>
 
-
-<script id="cen-v169-back-close-modals">/* disabled: replaced by B-plan back layer */</script>
-
-
-<script id="cen-v170-back-after-modal-exit-guard">/* disabled: replaced by B-plan back layer */</script>
-
-
-
-<script id="cen-v174-bplan-back-layer">
-(function(){
-  if (window.__cenBPlanBackLayerReady) return;
-  window.__cenBPlanBackLayerReady = true;
-
-  var exitOpen = false;
-  var exitTimer = null;
-  var EXIT_MS = 2600;
-
-  function isVisible(el){
-    if(!el) return false;
-    var st = window.getComputedStyle ? getComputedStyle(el) : el.style;
-    return !!(st && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0');
-  }
-
-  function removeExitNotice(){
-    exitOpen = false;
-    if(exitTimer){ clearTimeout(exitTimer); exitTimer = null; }
-    var el = document.getElementById('cenBPlanExitNotice');
-    if(el) el.remove();
-    var old1 = document.getElementById('cenExitBox');
-    if(old1) old1.remove();
-    var old2 = document.getElementById('exitConfirmDialog');
-    if(old2) old2.remove();
-    var old3 = document.getElementById('cenV170ExitNotice');
-    if(old3) old3.remove();
-  }
-
-  function pushGuard(reason){
-    try { history.pushState({ cenBPlanGuard:true, reason:reason || 'guard', t:Date.now() }, '', location.href); } catch(e) {}
-  }
-
-  function resetGuard(reason){
-    try { history.replaceState({ cenBPlanBase:true, reason:reason || 'base', t:Date.now() }, '', location.href); } catch(e) {}
-    pushGuard(reason || 'reset');
-  }
-
-  function showExitNotice(){
-    removeExitNotice();
-    exitOpen = true;
-    var wrap = document.createElement('div');
-    wrap.id = 'cenBPlanExitNotice';
-    wrap.style.cssText = 'position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:2147483647;background:rgba(60,45,31,.88);color:#fff;padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);font-size:14px;line-height:1.2;width:calc(100vw - 48px);max-width:560px;text-align:center;white-space:nowrap;box-sizing:border-box;';
-    var msg = document.createElement('div');
-    msg.textContent = '한 번 더 뒤로가기를 누르면 종료됩니다.';
-    msg.style.cssText = 'font-weight:800;margin-bottom:10px;white-space:nowrap;';
-    var cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.textContent = '취소';
-    cancel.style.cssText = 'border:0;border-radius:999px;padding:7px 16px;background:#fff;color:#2b2118;font-weight:800;';
-    cancel.onclick = function(e){
-      if(e) e.stopPropagation();
-      removeExitNotice();
-      resetGuard('exit-cancel');
-    };
-    wrap.appendChild(msg);
-    wrap.appendChild(cancel);
-    document.body.appendChild(wrap);
-    exitTimer = setTimeout(function(){
-      removeExitNotice();
-      resetGuard('exit-timeout');
-    }, EXIT_MS);
-  }
-
-  function closeTopLayer(){
-    var score = document.getElementById('scoreViewerOverlay');
-    if(isVisible(score)){ score.remove(); return true; }
-
-    var folder = document.getElementById('cenFolderFlowModal');
-    if(isVisible(folder)){ folder.style.display='none'; return true; }
-
-    var responsive = document.getElementById('responsivePanel');
-    var responsiveDetail = document.getElementById('responsiveDetailView');
-    if(isVisible(responsive) && responsiveDetail && responsiveDetail.style.display !== 'none'){
-      if(typeof backResponsiveList === 'function') backResponsiveList();
-      else responsiveDetail.style.display = 'none';
-      return true;
-    }
-
-    var modals = Array.prototype.slice.call(document.querySelectorAll('.modal'))
-      .filter(function(el){ return isVisible(el); });
-    if(modals.length){
-      var top = modals[modals.length - 1];
-      if(top.id === 'searchPanel' && typeof clearBibleSearch === 'function') clearBibleSearch();
-      top.style.display = 'none';
-      return true;
-    }
-
-    var sheet = document.getElementById('settingsSheet');
-    if(sheet && sheet.classList && sheet.classList.contains('show')){
-      if(typeof closeSettings === 'function') closeSettings();
-      else sheet.classList.remove('show');
-      return true;
-    }
-
-    var plan = document.getElementById('readingPlan');
-    if(isVisible(plan)){
-      if(typeof closeReadingPlan === 'function') closeReadingPlan();
-      else plan.style.display='none';
-      return true;
-    }
-
-    return false;
-  }
-
-  window.__cenCloseTopWindowByBack = closeTopLayer;
-  window.__cenBackResetGuard = resetGuard;
-
-  function handleBack(e){
-    if(window.__cenBPlanAllowExit) return;
-    if(e && e.preventDefault) e.preventDefault();
-    if(e && e.stopImmediatePropagation) e.stopImmediatePropagation();
-
-    if(closeTopLayer()){
-      removeExitNotice();
-      setTimeout(function(){ resetGuard('layer-closed'); }, 0);
-      return false;
-    }
-
-    if(exitOpen){
-      window.__cenBPlanAllowExit = true;
-      removeExitNotice();
-      try { history.go(-2); } catch(err) { try { history.back(); } catch(e2) {} }
-      setTimeout(function(){ try { window.close(); } catch(err) {} }, 80);
-      return false;
-    }
-
-    showExitNotice();
-    setTimeout(function(){ pushGuard('exit-notice'); }, 0);
-    return false;
-  }
-
-  // 초기 진입 직후와 load 직후 2번 세팅: 안드로이드 PWA에서 첫 히스토리 누락을 방지합니다.
-  resetGuard('init');
-  window.addEventListener('load', function(){ resetGuard('load'); }, { once:true });
-  document.addEventListener('visibilitychange', function(){
-    if(!document.hidden && !exitOpen) resetGuard('visible');
-  });
-
-  window.addEventListener('popstate', handleBack, true);
-})();
-</script>
 
 </body>
 </html>
