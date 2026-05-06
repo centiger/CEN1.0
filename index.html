@@ -3045,177 +3045,75 @@ document.addEventListener('pointerup',()=>{ if(planDrag){ const b=planDragBook; 
 document.addEventListener('touchend',()=>{ if(planDrag){ const b=planDragBook; planDrag=false; planDragBook=null; if(b) finalizePlanDrag(b); } });
 function openPlanSettings() { if(confirm('성경읽기표 전체 기록을 초기화할까요?')){ progress={count:0,checked:{}}; saveProgress(); showPlanAll(); } }
 function setupBackGuard() {
-  if (window.__cenUnifiedBackReady) return;
-  window.__cenUnifiedBackReady = true;
+  if (window.__backGuardReady) return;
+  window.__backGuardReady = true;
+  window.__allowExit = false;
+  window.__exitDialogOpen = false;
 
-  var exitOpen = false;
-  var allowRealExit = false;
-  var exitTimer = null;
-
-  function visible(el) {
-    if (!el) return false;
-    var st = window.getComputedStyle ? getComputedStyle(el) : el.style;
-    return !!st && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0';
-  }
-
-  function closeTopWindow() {
-    var score = document.getElementById('scoreViewerOverlay');
-    if (visible(score)) { score.remove(); return true; }
-
-    var responsive = document.getElementById('responsivePanel');
-    var responsiveDetail = document.getElementById('responsiveDetailView');
-    if (visible(responsive) && responsiveDetail && responsiveDetail.style.display !== 'none') {
-      if (typeof backResponsiveList === 'function') backResponsiveList();
-      return true;
-    }
-
-    var modals = Array.prototype.slice.call(document.querySelectorAll('.modal'))
-      .filter(function(el){ return visible(el); });
-    if (modals.length) {
-      var top = modals[modals.length - 1];
-      if (top.id === 'searchPanel' && typeof clearBibleSearch === 'function') clearBibleSearch();
-      top.style.display = 'none';
-      return true;
-    }
-
-    var sheet = document.getElementById('settingsSheet');
-    if (sheet && sheet.classList && sheet.classList.contains('show')) {
-      if (typeof closeSettings === 'function') closeSettings();
-      else sheet.classList.remove('show');
-      return true;
-    }
-
-    var plan = document.getElementById('readingPlan');
-    if (visible(plan)) {
-      if (typeof closeReadingPlan === 'function') closeReadingPlan();
-      else plan.style.display = 'none';
-      return true;
-    }
-
-    var flow = document.getElementById('cenFolderFlowModal');
-    if (visible(flow)) { flow.style.display = 'none'; return true; }
-
-    return false;
-  }
-
-  window.__cenCloseTopWindowByBack = closeTopWindow;
-
-  function pushGuard() {
-    try { history.pushState({ cenUnifiedBackGuard: true, t: Date.now() }, '', location.href); } catch(e) {}
-  }
-
-  // 새창이 열릴 때도 히스토리 한 칸을 추가해 둡니다.
-  // 그러면 뒤로가기 1회는 창 닫기에만 쓰이고, 그 다음 뒤로가기는 종료 안내로 안정적으로 넘어갑니다.
-  var modalGuardArmed = false;
-  function hasOpenWindowForBackGuard() {
-    try { return !!closeTopWindow.__peek ? closeTopWindow.__peek() : false; } catch(e) { return false; }
-  }
-  closeTopWindow.__peek = function(){
-    var score = document.getElementById('scoreViewerOverlay');
-    if (visible(score)) return true;
-    var responsive = document.getElementById('responsivePanel');
-    var detail = document.getElementById('responsiveDetailView');
-    if (visible(responsive) && detail && detail.style.display !== 'none') return true;
-    var modals = Array.prototype.slice.call(document.querySelectorAll('.modal')).filter(function(el){ return visible(el); });
-    if (modals.length) return true;
-    var sheet = document.getElementById('settingsSheet');
-    if (sheet && sheet.classList && sheet.classList.contains('show')) return true;
-    var plan = document.getElementById('readingPlan');
-    if (visible(plan)) return true;
-    var flow = document.getElementById('cenFolderFlowModal');
-    if (visible(flow)) return true;
-    return false;
-  };
-  function armModalGuardIfNeeded() {
-    if (!closeTopWindow.__peek()) { modalGuardArmed = false; return; }
-    if (modalGuardArmed) return;
-    modalGuardArmed = true;
-    try { history.pushState({ cenModalGuard: true, t: Date.now() }, '', location.href); } catch(e) {}
-  }
+  // PWA 뒤로가기 처리 원칙:
+  // 최초에는 가드 히스토리를 1개만 쌓고,
+  // 뒤로가기 시 확인창을 띄운 뒤 '종료'를 누르면 가드를 다시 쌓지 않고 실제 뒤로가기로 앱을 빠져나갑니다.
   try {
-    var mo = new MutationObserver(function(){ setTimeout(armModalGuardIfNeeded, 0); });
-    mo.observe(document.body, { subtree:true, attributes:true, attributeFilter:['style','class'] });
-    document.addEventListener('click', function(){ setTimeout(armModalGuardIfNeeded, 0); }, true);
+    history.replaceState({ appRoot: true }, '', location.href);
+    history.pushState({ appGuard: true }, '', location.href);
   } catch(e) {}
 
-  function resetRootAndGuard() {
-    try { history.replaceState({ cenUnifiedRoot: true, t: Date.now() }, '', location.href); } catch(e) {}
-    pushGuard();
-  }
+  function ensureExitDialog(){
+    let dlg = document.getElementById('exitConfirmDialog');
+    if (dlg) return dlg;
 
-  function removeExitNotice() {
-    exitOpen = false;
-    clearTimeout(exitTimer);
-    var el = document.getElementById('cenUnifiedExitNotice');
-    if (el) el.remove();
-  }
+    dlg = document.createElement('div');
+    dlg.id = 'exitConfirmDialog';
+    dlg.innerHTML = `
+      <div class="exitBox">
+        <div class="exitTitle">앱을 종료하시겠습니까?</div>
+        <div class="exitBtns">
+          <button type="button" id="exitNoBtn">취소</button>
+          <button type="button" id="exitYesBtn">종료</button>
+        </div>
+      </div>`;
+    document.body.appendChild(dlg);
 
-  function showExitNotice() {
-    removeExitNotice();
-    exitOpen = true;
-    var wrap = document.createElement('div');
-    wrap.id = 'cenUnifiedExitNotice';
-    wrap.style.cssText = 'position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:2147483647;background:rgba(60,45,31,.86);color:#fff;padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);font-size:14px;line-height:1.2;min-width:300px;text-align:center;white-space:nowrap;';
-    var msg = document.createElement('div');
-    msg.textContent = '한 번 더 뒤로가기를 누르면 종료됩니다.';
-    msg.style.cssText = 'font-weight:800;margin-bottom:10px;white-space:nowrap;';
-    var cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.textContent = '취소';
-    cancel.style.cssText = 'border:0;border-radius:999px;padding:7px 16px;background:#fff;color:#2b2118;font-weight:800;';
-    cancel.onclick = function(e){
-      if(e) e.stopPropagation();
-      removeExitNotice();
-      resetRootAndGuard();
+    document.getElementById('exitNoBtn').onclick = function(e){
+      e.stopPropagation();
+      window.__exitDialogOpen = false;
+      dlg.style.display = 'none';
+      try { history.pushState({ appGuard: true, t: Date.now() }, '', location.href); } catch(err) {}
     };
-    wrap.appendChild(msg);
-    wrap.appendChild(cancel);
-    document.body.appendChild(wrap);
-    exitTimer = setTimeout(function(){ removeExitNotice(); resetRootAndGuard(); }, 2500);
+
+    document.getElementById('exitYesBtn').onclick = function(e){
+      e.stopPropagation();
+      window.__allowExit = true;
+      window.__exitDialogOpen = false;
+      dlg.style.display = 'none';
+
+      // 현재 위치는 가드가 빠진 root 상태입니다. 여기서 한 번 더 뒤로가면 PWA가 종료됩니다.
+      // 일부 삼성/크롬 환경에서 한 번에 안 빠지는 경우를 대비해 짧게 추가 back을 보냅니다.
+      try { history.back(); } catch(err) {}
+      setTimeout(function(){ try { history.back(); } catch(err) {} }, 120);
+      setTimeout(function(){ try { window.close(); } catch(err) {} }, 220);
+    };
+
+    dlg.addEventListener('click', function(e){
+      if(e.target === dlg){
+        window.__exitDialogOpen = false;
+        dlg.style.display = 'none';
+        try { history.pushState({ appGuard: true, t: Date.now() }, '', location.href); } catch(err) {}
+      }
+    });
+
+    return dlg;
   }
 
-  resetRootAndGuard();
-
-  window.addEventListener('popstate', function(e){
-    if (allowRealExit) return;
-
-    if (closeTopWindow()) {
-      removeExitNotice();
-      // 핵심 수정: 뒤로가기 버튼으로 창을 닫은 직후에도
-      // 현재 화면 위에 새 히스토리 가드를 즉시 다시 쌓습니다.
-      // setTimeout만 쓰면 일부 Android/PWA 환경에서 다음 뒤로가기가 앱 종료로 빠지는 경우가 있어
-      // 동기 pushState + 지연 보강을 함께 적용합니다.
-      modalGuardArmed = false;
-      try { history.pushState({ cenUnifiedBackGuard: true, afterBackClose: true, t: Date.now() }, '', location.href); } catch(err) {}
-      setTimeout(function(){
-        try {
-          if (!document.getElementById('cenUnifiedExitNotice')) {
-            history.pushState({ cenUnifiedBackGuard: true, afterBackCloseDelay: true, t: Date.now() }, '', location.href);
-          }
-        } catch(err) {}
-      }, 30);
-      if (e && e.preventDefault) e.preventDefault();
-      if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
-      return false;
-    }
-
-    if (exitOpen) {
-      allowRealExit = true;
-      removeExitNotice();
-      if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
-      setTimeout(function(){ try { history.back(); } catch(err) {} }, 0);
-      setTimeout(function(){ try { window.close(); } catch(err) {} }, 160);
-      return false;
-    }
-
-    showExitNotice();
-    pushGuard();
-    if (e && e.preventDefault) e.preventDefault();
-    if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
-    return false;
-  }, true);
+  window.addEventListener('popstate', function(){
+    if (window.__allowExit) return;
+    if (window.__exitDialogOpen) return;
+    window.__exitDialogOpen = true;
+    const dlg = ensureExitDialog();
+    dlg.style.display = 'flex';
+    // 여기서 pushState를 즉시 다시 쌓지 않습니다. 그래야 '종료' 버튼이 실제 앱 종료로 이어집니다.
+  });
 }
-
 
 
 /* v13 overrides */
@@ -7140,7 +7038,80 @@ function resetMemoSearch(){
   function isStandalone() {
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   }
-  // Back-button handling is managed by setupBackGuard().
+
+  var lastBackTime = 0;
+
+  function removeExitBox() {
+    var box = document.getElementById("cenExitBox");
+    if (box) box.remove();
+    var old = document.getElementById("exitConfirmDialog");
+    if (old) old.remove();
+  }
+
+  function showExitBox() {
+    removeExitBox();
+
+    var wrap = document.createElement("div");
+    wrap.id = "cenExitBox";
+    wrap.style.cssText =
+      "position:fixed;left:50%;bottom:72px;transform:translateX(-50%);" +
+      "z-index:999999;background:rgba(60,45,31,.86);color:#fff;" +
+      "padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);" +
+      "font-size:14px;line-height:1.2;min-width:300px;text-align:center;white-space:nowrap;";
+
+    var msg = document.createElement("div");
+    msg.textContent = "한 번 더 뒤로가기를 누르면 종료됩니다.";
+    msg.style.cssText = "font-weight:800;margin-bottom:10px;white-space:nowrap;";
+
+    var cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = "취소";
+    cancel.style.cssText =
+      "border:0;border-radius:999px;padding:7px 16px;background:#fff;" +
+      "color:#2b2118;font-weight:800;";
+    cancel.onclick = function() {
+      lastBackTime = 0;
+      removeExitBox();
+      try { history.pushState({ cenBackGuard: true }, "", location.href); } catch(e) {}
+    };
+
+    wrap.appendChild(msg);
+    wrap.appendChild(cancel);
+    document.body.appendChild(wrap);
+
+    clearTimeout(window.__cenExitBoxTimer);
+    window.__cenExitBoxTimer = setTimeout(function() {
+      lastBackTime = 0;
+      removeExitBox();
+    }, 2500);
+  }
+
+  try {
+    history.replaceState({ cenBase: true }, "", location.href);
+    history.pushState({ cenBackGuard: true }, "", location.href);
+  } catch(e) {}
+
+  window.addEventListener("popstate", function() {
+    if (!isStandalone()) return;
+
+    var now = Date.now();
+
+    if (now - lastBackTime < 2500) {
+      removeExitBox();
+      try { history.go(-2); } catch(e) { history.back(); }
+      setTimeout(function() {
+        try { window.close(); } catch(e) {}
+      }, 40);
+      return;
+    }
+
+    lastBackTime = now;
+    showExitBox();
+
+    try {
+      history.pushState({ cenBackGuard: true }, "", location.href);
+    } catch(e) {}
+  });
 })();
 </script>
 
@@ -8616,6 +8587,163 @@ function resetMemoSearch(){
 })();
 </script>
 
+
+<script id="cen-v169-back-close-modals">
+(function(){
+  if (window.__cenBackCloseModalsReady) return;
+  window.__cenBackCloseModalsReady = true;
+
+  function isVisible(el){
+    if(!el) return false;
+    var st = window.getComputedStyle ? getComputedStyle(el) : el.style;
+    return st && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0';
+  }
+
+  function hideModalById(id){
+    var el=document.getElementById(id);
+    if(!el) return false;
+    if(id === 'searchPanel' && typeof clearBibleSearch === 'function') clearBibleSearch();
+    el.style.display='none';
+    return true;
+  }
+
+  function closeTopCenWindow(){
+    var exit=document.getElementById('exitConfirmDialog');
+    if(isVisible(exit)) return false;
+
+    var score=document.getElementById('scoreViewerOverlay');
+    if(isVisible(score)){ score.remove(); return true; }
+
+    var responsive=document.getElementById('responsivePanel');
+    var responsiveDetail=document.getElementById('responsiveDetailView');
+    if(isVisible(responsive) && responsiveDetail && responsiveDetail.style.display !== 'none'){
+      if(typeof backResponsiveList === 'function') backResponsiveList();
+      return true;
+    }
+
+    var modals = Array.prototype.slice.call(document.querySelectorAll('.modal'))
+      .filter(function(el){ return isVisible(el); });
+    if(modals.length){
+      var top = modals[modals.length-1];
+      if(top && top.id){ hideModalById(top.id); return true; }
+      if(top){ top.style.display='none'; return true; }
+    }
+
+    var sheet=document.getElementById('settingsSheet');
+    if(sheet && sheet.classList && sheet.classList.contains('show')){
+      if(typeof closeSettings === 'function') closeSettings();
+      else sheet.classList.remove('show');
+      return true;
+    }
+
+    var plan=document.getElementById('readingPlan');
+    if(isVisible(plan)){
+      if(typeof closeReadingPlan === 'function') closeReadingPlan();
+      else plan.style.display='none';
+      return true;
+    }
+
+    return false;
+  }
+
+  window.__cenCloseTopWindowByBack = closeTopCenWindow;
+
+  window.addEventListener('popstate', function(e){
+    if (window.__allowExit) return;
+    if (closeTopCenWindow()){
+      if(e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+      if(e && e.preventDefault) e.preventDefault();
+      window.__exitDialogOpen = false;
+      setTimeout(function(){
+        try { history.pushState({ appGuard:true, modalClosed:true, t:Date.now() }, '', location.href); } catch(err) {}
+      }, 0);
+      return false;
+    }
+  }, true);
+})();
+</script>
+
+
+<script id="cen-v170-back-after-modal-exit-guard">
+(function(){
+  if (window.__cenV170BackGuardInstalled) return;
+  window.__cenV170BackGuardInstalled = true;
+  var exitOpen = false;
+  var exitAt = 0;
+
+  function removeExitNotice(){
+    exitOpen = false;
+    var el = document.getElementById('cenV170ExitNotice');
+    if (el) el.remove();
+  }
+
+  function showExitNotice(){
+    removeExitNotice();
+    exitOpen = true;
+    exitAt = Date.now();
+    var wrap = document.createElement('div');
+    wrap.id = 'cenV170ExitNotice';
+    wrap.style.cssText = 'position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:2147483647;background:rgba(60,45,31,.86);color:#fff;padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);font-size:14px;line-height:1.2;min-width:300px;text-align:center;white-space:nowrap;';
+    var msg = document.createElement('div');
+    msg.textContent = '한 번 더 뒤로가기를 누르면 종료됩니다.';
+    msg.style.cssText = 'font-weight:800;margin-bottom:10px;white-space:nowrap;';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '취소';
+    btn.style.cssText = 'border:0;border-radius:999px;padding:7px 16px;background:#fff;color:#2b2118;font-weight:800;';
+    btn.onclick = function(e){
+      if(e) e.stopPropagation();
+      removeExitNotice();
+      try { history.pushState({ cenV170Guard:true, cancel:true, t:Date.now() }, '', location.href); } catch(err) {}
+    };
+    wrap.appendChild(msg);
+    wrap.appendChild(btn);
+    document.body.appendChild(wrap);
+    clearTimeout(window.__cenV170ExitTimer);
+    window.__cenV170ExitTimer = setTimeout(function(){ removeExitNotice(); }, 2500);
+  }
+
+  function pushGuard(){
+    try { history.pushState({ cenV170Guard:true, t:Date.now() }, '', location.href); } catch(err) {}
+  }
+
+  try {
+    if (!history.state || !history.state.cenV170Guard) pushGuard();
+  } catch(err) {}
+
+  window.addEventListener('popstate', function(e){
+    if (window.__allowExit) return;
+
+    /* 다른 핸들러가 새창을 닫은 직후에는 여기까지 오지 않지만,
+       혹시 남는 경우를 위해 직접 한 번 더 확인합니다. */
+    if (typeof window.__cenCloseTopWindowByBack === 'function') {
+      try {
+        if (window.__cenCloseTopWindowByBack()) {
+          removeExitNotice();
+          pushGuard();
+          if(e && e.preventDefault) e.preventDefault();
+          if(e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+          return false;
+        }
+      } catch(err) {}
+    }
+
+    if (exitOpen && Date.now() - exitAt < 2500) {
+      window.__allowExit = true;
+      removeExitNotice();
+      if(e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+      setTimeout(function(){ try { history.back(); } catch(err) {} }, 0);
+      return false;
+    }
+
+    showExitNotice();
+    pushGuard();
+    if(e && e.preventDefault) e.preventDefault();
+    if(e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+    return false;
+  }, true);
+})();
+</script>
 
 </body>
 </html>
