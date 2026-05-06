@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="./manifest.json">
 <title>중범 성경</title>
-<!-- CEN Bible v35: back-exit fix + search reset label -->
+<!-- CEN Bible v36: back-exit fix + search reset label -->
 <style>
 :root {
   --accent:#b8946a;
@@ -3045,128 +3045,7 @@ document.addEventListener('pointerup',()=>{ if(planDrag){ const b=planDragBook; 
 document.addEventListener('touchend',()=>{ if(planDrag){ const b=planDragBook; planDrag=false; planDragBook=null; if(b) finalizePlanDrag(b); } });
 function openPlanSettings() { if(confirm('성경읽기표 전체 기록을 초기화할까요?')){ progress={count:0,checked:{}}; saveProgress(); showPlanAll(); } }
 function setupBackGuard() {
-  if (window.__cenUnifiedBackReady) return;
-  window.__cenUnifiedBackReady = true;
-
-  var exitOpen = false;
-  var allowRealExit = false;
-  var exitTimer = null;
-
-  function visible(el) {
-    if (!el) return false;
-    var st = window.getComputedStyle ? getComputedStyle(el) : el.style;
-    return !!st && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0';
-  }
-
-  function closeTopWindow() {
-    var score = document.getElementById('scoreViewerOverlay');
-    if (visible(score)) { score.remove(); return true; }
-
-    var responsive = document.getElementById('responsivePanel');
-    var responsiveDetail = document.getElementById('responsiveDetailView');
-    if (visible(responsive) && responsiveDetail && responsiveDetail.style.display !== 'none') {
-      if (typeof backResponsiveList === 'function') backResponsiveList();
-      return true;
-    }
-
-    var modals = Array.prototype.slice.call(document.querySelectorAll('.modal'))
-      .filter(function(el){ return visible(el); });
-    if (modals.length) {
-      var top = modals[modals.length - 1];
-      if (top.id === 'searchPanel' && typeof clearBibleSearch === 'function') clearBibleSearch();
-      top.style.display = 'none';
-      return true;
-    }
-
-    var sheet = document.getElementById('settingsSheet');
-    if (sheet && sheet.classList && sheet.classList.contains('show')) {
-      if (typeof closeSettings === 'function') closeSettings();
-      else sheet.classList.remove('show');
-      return true;
-    }
-
-    var plan = document.getElementById('readingPlan');
-    if (visible(plan)) {
-      if (typeof closeReadingPlan === 'function') closeReadingPlan();
-      else plan.style.display = 'none';
-      return true;
-    }
-
-    return false;
-  }
-
-  window.__cenCloseTopWindowByBack = closeTopWindow;
-
-  function pushGuard() {
-    try { history.pushState({ cenUnifiedBackGuard: true, t: Date.now() }, '', location.href); } catch(e) {}
-  }
-
-  function resetRootAndGuard() {
-    try { history.replaceState({ cenUnifiedRoot: true, t: Date.now() }, '', location.href); } catch(e) {}
-    pushGuard();
-  }
-
-  function removeExitNotice() {
-    exitOpen = false;
-    clearTimeout(exitTimer);
-    var el = document.getElementById('cenUnifiedExitNotice');
-    if (el) el.remove();
-  }
-
-  function showExitNotice() {
-    removeExitNotice();
-    exitOpen = true;
-    var wrap = document.createElement('div');
-    wrap.id = 'cenUnifiedExitNotice';
-    wrap.style.cssText = 'position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:2147483647;background:rgba(60,45,31,.86);color:#fff;padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);font-size:14px;line-height:1.2;min-width:300px;text-align:center;white-space:nowrap;';
-    var msg = document.createElement('div');
-    msg.textContent = '한 번 더 뒤로가기를 누르면 종료됩니다.';
-    msg.style.cssText = 'font-weight:800;margin-bottom:10px;white-space:nowrap;';
-    var cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.textContent = '취소';
-    cancel.style.cssText = 'border:0;border-radius:999px;padding:7px 16px;background:#fff;color:#2b2118;font-weight:800;';
-    cancel.onclick = function(e){
-      if(e) e.stopPropagation();
-      removeExitNotice();
-      resetRootAndGuard();
-    };
-    wrap.appendChild(msg);
-    wrap.appendChild(cancel);
-    document.body.appendChild(wrap);
-    exitTimer = setTimeout(function(){ removeExitNotice(); resetRootAndGuard(); }, 2500);
-  }
-
-  resetRootAndGuard();
-
-  window.addEventListener('popstate', function(e){
-    if (allowRealExit) return;
-
-    if (closeTopWindow()) {
-      removeExitNotice();
-      // 새창 닫힘 후 즉시 앱 기본 화면에 가드를 다시 설치합니다.
-      // 따라서 다음 뒤로가기는 실제 종료가 아니라 종료 안내창으로 들어옵니다.
-      setTimeout(resetRootAndGuard, 0);
-      if (e && e.preventDefault) e.preventDefault();
-      if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
-      return false;
-    }
-
-    if (exitOpen) {
-      allowRealExit = true;
-      removeExitNotice();
-      if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
-      setTimeout(function(){ try { history.back(); } catch(err) {} }, 0);
-      setTimeout(function(){ try { window.close(); } catch(err) {} }, 160);
-      return false;
-    }
-
-    showExitNotice();
-    pushGuard();
-    if (e && e.preventDefault) e.preventDefault();
-    if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
-    return false;
-  }, true);
+  // Back handling is provided by cen-v172-unified-back-flow below.
 }
 
 
@@ -7093,7 +6972,81 @@ function resetMemoSearch(){
   function isStandalone() {
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   }
-  // Back-button handling is managed by setupBackGuard().
+
+  var lastBackTime = 0;
+
+  function removeExitBox() {
+    var box = document.getElementById("cenExitBox");
+    if (box) box.remove();
+    var old = document.getElementById("exitConfirmDialog");
+    if (old) old.remove();
+  }
+
+  function showExitBox() {
+    removeExitBox();
+
+    var wrap = document.createElement("div");
+    wrap.id = "cenExitBox";
+    wrap.style.cssText =
+      "position:fixed;left:50%;bottom:72px;transform:translateX(-50%);" +
+      "z-index:999999;background:rgba(60,45,31,.86);color:#fff;" +
+      "padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.28);" +
+      "font-size:14px;line-height:1.2;min-width:300px;text-align:center;white-space:nowrap;";
+
+    var msg = document.createElement("div");
+    msg.textContent = "한 번 더 뒤로가기를 누르면 종료됩니다.";
+    msg.style.cssText = "font-weight:800;margin-bottom:10px;white-space:nowrap;";
+
+    var cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = "취소";
+    cancel.style.cssText =
+      "border:0;border-radius:999px;padding:7px 16px;background:#fff;" +
+      "color:#2b2118;font-weight:800;";
+    cancel.onclick = function() {
+      lastBackTime = 0;
+      removeExitBox();
+      try { history.pushState({ cenBackGuard: true }, "", location.href); } catch(e) {}
+    };
+
+    wrap.appendChild(msg);
+    wrap.appendChild(cancel);
+    document.body.appendChild(wrap);
+
+    clearTimeout(window.__cenExitBoxTimer);
+    window.__cenExitBoxTimer = setTimeout(function() {
+      lastBackTime = 0;
+      removeExitBox();
+    }, 2500);
+  }
+
+  try {
+    history.replaceState({ cenBase: true }, "", location.href);
+    history.pushState({ cenBackGuard: true }, "", location.href);
+  } catch(e) {}
+
+  window.addEventListener("popstate", function() {
+    return; // disabled: unified back flow handles Android/PWA back button
+    if (!isStandalone()) return;
+
+    var now = Date.now();
+
+    if (now - lastBackTime < 2500) {
+      removeExitBox();
+      try { history.go(-2); } catch(e) { history.back(); }
+      setTimeout(function() {
+        try { window.close(); } catch(e) {}
+      }, 40);
+      return;
+    }
+
+    lastBackTime = now;
+    showExitBox();
+
+    try {
+      history.pushState({ cenBackGuard: true }, "", location.href);
+    } catch(e) {}
+  });
 })();
 </script>
 
@@ -8570,6 +8523,151 @@ function resetMemoSearch(){
 </script>
 
 
+
+
+
+
+<script id="cen-v173-back-flow-final">
+(function(){
+  if (window.__cenV173BackFlowFinal) return;
+  window.__cenV173BackFlowFinal = true;
+
+  var exitOpen = false;
+  var exitAt = 0;
+  var EXIT_MS = 2600;
+
+  function visible(el){
+    if(!el) return false;
+    var st = getComputedStyle(el);
+    if(!st || st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0') return false;
+    return (el.offsetWidth > 0 || el.offsetHeight > 0 || st.position === 'fixed');
+  }
+
+  function clearNotice(){
+    exitOpen = false;
+    clearTimeout(window.__cenV173ExitTimer);
+    ['cenV173ExitNotice','cenV172ExitNotice','cenV170ExitNotice','cenExitBox','exitConfirmDialog'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.remove();
+    });
+  }
+
+  function showNotice(){
+    clearNotice();
+    exitOpen = true;
+    exitAt = Date.now();
+    var wrap = document.createElement('div');
+    wrap.id = 'cenV173ExitNotice';
+    wrap.style.cssText = 'position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:2147483647;background:rgba(60,45,31,.88);color:#fff;padding:12px 14px;border-radius:16px;box-shadow:0 6px 22px rgba(0,0,0,.30);font-size:14px;line-height:1.2;min-width:300px;text-align:center;white-space:nowrap;';
+    var msg = document.createElement('div');
+    msg.textContent = '한 번 더 뒤로가기를 누르면 종료됩니다.';
+    msg.style.cssText = 'font-weight:800;margin-bottom:10px;white-space:nowrap;';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '취소';
+    btn.style.cssText = 'border:0;border-radius:999px;padding:7px 16px;background:#fff;color:#2b2118;font-weight:800;';
+    btn.onclick = function(ev){ if(ev) ev.stopPropagation(); clearNotice(); ensureGuard('cancel'); };
+    wrap.appendChild(msg);
+    wrap.appendChild(btn);
+    document.body.appendChild(wrap);
+    window.__cenV173ExitTimer = setTimeout(function(){ clearNotice(); ensureGuard('timeout'); }, EXIT_MS);
+  }
+
+  function pushGuard(label){
+    try { history.pushState({ cenBackGuardV173:true, label:label||'guard', t:Date.now() }, '', location.href); } catch(e) {}
+  }
+
+  function ensureGuard(label){
+    pushGuard(label || 'ensure');
+    setTimeout(function(){ pushGuard((label || 'ensure') + '-30'); }, 30);
+    setTimeout(function(){ pushGuard((label || 'ensure') + '-160'); }, 160);
+  }
+
+  function seedInitial(){
+    try { history.replaceState({ cenBaseV173:true, t:Date.now() }, '', location.href); } catch(e) {}
+    ensureGuard('initial');
+  }
+
+  function closeById(id){
+    var el = document.getElementById(id);
+    if(!el) return false;
+    if(id === 'searchPanel' && typeof clearBibleSearch === 'function') { try { clearBibleSearch(); } catch(e) {} }
+    el.style.display = 'none';
+    return true;
+  }
+
+  function closeTopOpenedWindow(){
+    var score = document.getElementById('scoreViewerOverlay');
+    if(visible(score)){ score.remove(); return true; }
+
+    var responsive = document.getElementById('responsivePanel');
+    var responsiveDetail = document.getElementById('responsiveDetailView');
+    if(visible(responsive) && responsiveDetail && responsiveDetail.style.display !== 'none'){
+      if(typeof backResponsiveList === 'function') { try { backResponsiveList(); } catch(e) {} }
+      return true;
+    }
+
+    var modals = Array.prototype.slice.call(document.querySelectorAll('.modal')).filter(visible);
+    if(modals.length){
+      var top = modals[modals.length-1];
+      if(top.id) return closeById(top.id);
+      top.style.display = 'none';
+      return true;
+    }
+
+    var sheet = document.getElementById('settingsSheet');
+    if(sheet && sheet.classList && sheet.classList.contains('show')){
+      if(typeof closeSettings === 'function') { try { closeSettings(); } catch(e) { sheet.classList.remove('show'); } }
+      else sheet.classList.remove('show');
+      return true;
+    }
+
+    var plan = document.getElementById('readingPlan');
+    if(visible(plan)){
+      if(typeof closeReadingPlan === 'function') { try { closeReadingPlan(); } catch(e) { plan.style.display='none'; } }
+      else plan.style.display = 'none';
+      return true;
+    }
+    return false;
+  }
+
+  window.__cenCloseTopWindowByBack = closeTopOpenedWindow;
+
+  function onBack(ev){
+    if(window.__cenAllowRealExit) return;
+
+    if(closeTopOpenedWindow()){
+      clearNotice();
+      ensureGuard('after-window-close');
+      if(ev && ev.preventDefault) ev.preventDefault();
+      if(ev && ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      return false;
+    }
+
+    if(exitOpen && Date.now() - exitAt < EXIT_MS){
+      window.__cenAllowRealExit = true;
+      clearNotice();
+      if(ev && ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      setTimeout(function(){ try { history.back(); } catch(e) {} }, 0);
+      return false;
+    }
+
+    showNotice();
+    ensureGuard('exit-notice');
+    if(ev && ev.preventDefault) ev.preventDefault();
+    if(ev && ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+    return false;
+  }
+
+  // 최대한 이른 시점과 실제 화면 복귀 시점 모두에서 가드 재설정
+  seedInitial();
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ ensureGuard('dom-ready'); }, {once:true});
+  else ensureGuard('dom-ready-now');
+  window.addEventListener('pageshow', function(){ if(!window.__cenAllowRealExit) ensureGuard('pageshow'); });
+  window.addEventListener('focus', function(){ if(!window.__cenAllowRealExit) ensureGuard('focus'); });
+  window.addEventListener('popstate', onBack, true);
+})();
+</script>
 </body>
 </html>
 

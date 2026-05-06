@@ -1,10 +1,10 @@
-const CACHE_NAME = 'cen-bible-v163-justify';
+const CACHE_NAME = 'cen-bible-v173-back-flow-final';
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", event => {
