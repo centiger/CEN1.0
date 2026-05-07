@@ -8639,3 +8639,161 @@ function resetMemoSearch(){
   width: auto !important;
 }
 </style>
+
+<script id="cen-v100-hymn-score-swipe-patch">
+(function(){
+  'use strict';
+  var VERSION='v1.0.0';
+  var TEXT_SWIPE_X=70;
+  var TEXT_SWIPE_Y=90;
+  var SCORE_SWIPE_X=70;
+  var SCORE_SWIPE_Y=90;
+  var MAX_TIME=1100;
+  var currentHymn=null;
+  var oldText=null;
+  var oldScore=null;
+
+  function hymns(){
+    try{ if(typeof hymnData!=='undefined' && Array.isArray(hymnData)) return hymnData; }catch(e){}
+    try{ if(Array.isArray(window.hymnData)) return window.hymnData; }catch(e){}
+    return [];
+  }
+  function getNo(h){ return Number(h && (h.number || h.no)); }
+  function sortedHymns(){
+    return hymns().slice().sort(function(a,b){ return getNo(a)-getNo(b); });
+  }
+  function adjacent(h,dir){
+    var arr=sortedHymns();
+    var no=getNo(h);
+    var idx=arr.findIndex(function(x){ return getNo(x)===no; });
+    if(idx<0) return null;
+    return arr[idx+(dir>0?1:-1)] || null;
+  }
+  function scaleOf(img){
+    if(!img) return 1;
+    var tr=String(img.style.transform || '');
+    var m=tr.match(/scale\(([-0-9.]+)\)/);
+    var n=m ? parseFloat(m[1]) : 1;
+    return isFinite(n) ? n : 1;
+  }
+  function applyBadge(){
+    var badge=document.getElementById('cenVersionBadge');
+    if(badge) badge.textContent=VERSION;
+  }
+  function moveHymn(dir, scoreMode){
+    var n=adjacent(currentHymn,dir);
+    if(!n) return;
+    currentHymn=n;
+    try{
+      if(oldText) oldText.call(window,n);
+      setTimeout(function(){ attachTextSwipe(n); },30);
+      if(scoreMode && oldScore){
+        setTimeout(function(){ oldScore.call(window,n); setTimeout(function(){ attachScoreSwipe(n); },30); },20);
+      }
+    }catch(e){ console.warn('[CEN] hymn swipe failed',e); }
+  }
+
+  function attachTextSwipe(h){
+    currentHymn=h || currentHymn;
+    var area=document.getElementById('hymnResult');
+    if(!area || area.__cenTextSwipeReady) return;
+    area.__cenTextSwipeReady=true;
+    var sx=0, sy=0, st=0, active=false;
+    area.addEventListener('touchstart',function(e){
+      if(!area.classList.contains('hymnTextDetail')) return;
+      if(!e.touches || e.touches.length!==1) return;
+      if(e.target && e.target.closest && e.target.closest('button,input,textarea,select')) return;
+      sx=e.touches[0].clientX; sy=e.touches[0].clientY; st=Date.now(); active=true;
+    }, {capture:true, passive:true});
+    area.addEventListener('touchmove',function(e){
+      if(!active || !e.touches || e.touches.length!==1) return;
+      var dx=e.touches[0].clientX-sx, dy=e.touches[0].clientY-sy;
+      if(Math.abs(dx)>35 && Math.abs(dx)>Math.abs(dy)*1.25){
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, {capture:true, passive:false});
+    area.addEventListener('touchend',function(e){
+      if(!active || !e.changedTouches || !e.changedTouches.length) return;
+      active=false;
+      var dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+      if(Date.now()-st>MAX_TIME) return;
+      if(Math.abs(dx)>=TEXT_SWIPE_X && Math.abs(dy)<=TEXT_SWIPE_Y && Math.abs(dx)>Math.abs(dy)*1.25){
+        e.preventDefault();
+        e.stopPropagation();
+        if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+        moveHymn(dx<0 ? 1 : -1, false);
+      }
+    }, {capture:true, passive:false});
+  }
+
+  function attachScoreSwipe(h){
+    currentHymn=h || currentHymn;
+    var overlay=document.getElementById('scoreViewerOverlay');
+    if(!overlay) return;
+    var body=overlay.querySelector('.scoreViewerBody');
+    var img=overlay.querySelector('.scoreViewerImg');
+    if(!body || !img || body.__cenScoreSwipeReady) return;
+    body.__cenScoreSwipeReady=true;
+    var sx=0, sy=0, st=0, active=false, horizontal=false;
+    body.addEventListener('touchstart',function(e){
+      if(!e.touches || e.touches.length!==1) return;
+      if(scaleOf(img)>1.05) return; // 확대 상태에서는 기존 이동/확대 기능 우선
+      sx=e.touches[0].clientX; sy=e.touches[0].clientY; st=Date.now(); active=true; horizontal=false;
+    }, {capture:true, passive:true});
+    body.addEventListener('touchmove',function(e){
+      if(!active || !e.touches || e.touches.length!==1) return;
+      if(scaleOf(img)>1.05){ active=false; return; }
+      var dx=e.touches[0].clientX-sx, dy=e.touches[0].clientY-sy;
+      if(Math.abs(dx)>35 && Math.abs(dx)>Math.abs(dy)*1.25){
+        horizontal=true;
+        e.preventDefault();
+        e.stopPropagation();
+        if(e.stopImmediatePropagation) e.stopImmediatePropagation(); // 원래 악보 드래그 차단
+      }
+    }, {capture:true, passive:false});
+    body.addEventListener('touchend',function(e){
+      if(!active || !e.changedTouches || !e.changedTouches.length) return;
+      var dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+      var ok = scaleOf(img)<=1.05 && Date.now()-st<=MAX_TIME && Math.abs(dx)>=SCORE_SWIPE_X && Math.abs(dy)<=SCORE_SWIPE_Y && Math.abs(dx)>Math.abs(dy)*1.25;
+      active=false;
+      if(ok){
+        e.preventDefault();
+        e.stopPropagation();
+        if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+        moveHymn(dx<0 ? 1 : -1, true);
+      }else if(horizontal){
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, {capture:true, passive:false});
+  }
+
+  function install(){
+    applyBadge();
+    if(typeof window.showHymnText==='function' && !window.showHymnText.__cenSwipeV100Fixed){
+      oldText=window.showHymnText;
+      window.showHymnText=function(h){
+        currentHymn=h || currentHymn;
+        var ret=oldText.apply(this,arguments);
+        setTimeout(function(){ attachTextSwipe(h); },40);
+        return ret;
+      };
+      window.showHymnText.__cenSwipeV100Fixed=true;
+    }
+    if(typeof window.showHymnScore==='function' && !window.showHymnScore.__cenSwipeV100Fixed){
+      oldScore=window.showHymnScore;
+      window.showHymnScore=function(h){
+        currentHymn=h || currentHymn;
+        var ret=oldScore.apply(this,arguments);
+        setTimeout(function(){ attachScoreSwipe(h); },40);
+        return ret;
+      };
+      window.showHymnScore.__cenSwipeV100Fixed=true;
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install); else install();
+  setTimeout(install,300);
+  setTimeout(install,1000);
+})();
+</script>
