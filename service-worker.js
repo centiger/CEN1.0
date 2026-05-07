@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cen-bible-v100-bplan-back-layer';
+const CACHE_NAME = 'cen-bible-v163-bplan-back-layer';
 const APP_SHELL = [
   "./",
   "./index.html",
