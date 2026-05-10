@@ -58,3 +58,15 @@ self.addEventListener("fetch", event => {
     })
   );
 });
+
+
+<style>
+.wake-lock-btn.active,
+.wake-lock-toggle button.active,
+button.active-wakelock,
+button[data-selected="true"]{
+    background:#0b5d1e !important;
+    color:#ffffff !important;
+    border-color:#0b5d1e !important;
+}
+</style>
