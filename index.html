@@ -2177,11 +2177,13 @@ body.scoreViewerOpen{
   </div>
   <div class="settingControlRow wakeLockControlRow">
     <label>화면 꺼짐 방지</label>
-    <div class="settingBtns">
-      <button id="wakeLockOnBtn" onclick="setScreenKeepAwake(true, event)">ON</button>
-      <button id="wakeLockOffBtn" onclick="setScreenKeepAwake(false, event)">OFF</button>
+    <div class="wakeLockInlineBox">
+      <div class="wakeLockMiniBtns">
+        <button id="wakeLockOnBtn" onclick="setScreenKeepAwake(true, event)">ON</button>
+        <button id="wakeLockOffBtn" onclick="setScreenKeepAwake(false, event)">OFF</button>
+      </div>
+      <div id="wakeLockStatus" class="wakeLockDescBox">ON: 성경 사용 중 화면이 꺼지지 않도록 유지합니다.</div>
     </div>
-    <div id="wakeLockStatus">성경을 읽는 동안 화면이 꺼지지 않도록 유지합니다.</div>
   </div>
   <div class="settingControlRow colorControlRow"><label>색상</label><div class="colorPair">
     <div class="colorMini"><label>글자색</label><input type="color" id="fontColor" onchange="setFontColor(this.value)"></div>
@@ -2734,7 +2736,7 @@ function updateWakeLockButtons() {
     if (!isCenWakeLockSupported()) {
       status.textContent = 'Chrome 또는 지원 브라우저에서 홈 화면에 추가해 실행하면 안정적으로 작동합니다.';
     } else {
-      status.textContent = enabled ? 'ON: 성경 사용 중 화면이 꺼지지 않도록 유지합니다.' : 'OFF: 기기 기본 화면 꺼짐 시간을 따릅니다.';
+      status.textContent = enabled ? 'ON: 성경 읽기·찬송가 사용 중 화면이 꺼지지 않도록 유지합니다.' : 'OFF: 휴대폰 기본 화면 꺼짐 설정을 그대로 따릅니다.';
     }
   }
 }
@@ -8895,5 +8897,67 @@ function resetMemoSearch(){
   border:2px solid #4b341c !important;
   font-weight:900 !important;
   box-shadow:0 2px 7px rgba(70,45,20,.28) !important;
+}
+</style>
+
+
+<style>
+/* Wake Lock compact green UI - final override */
+#settingsSheet .wakeLockControlRow{
+  grid-template-columns:80px 1fr !important;
+  align-items:center !important;
+}
+#settingsSheet .wakeLockInlineBox{
+  width:100% !important;
+  display:grid !important;
+  grid-template-columns:82px 1fr !important;
+  gap:7px !important;
+  align-items:stretch !important;
+  box-sizing:border-box !important;
+}
+#settingsSheet .wakeLockMiniBtns{
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important;
+  gap:4px !important;
+  width:82px !important;
+  min-width:82px !important;
+}
+#settingsSheet .wakeLockMiniBtns button{
+  width:100% !important;
+  min-width:0 !important;
+  height:34px !important;
+  padding:0 !important;
+  border-radius:9px !important;
+  border:1px solid #b9cfbd !important;
+  background:#f5fbf6 !important;
+  color:#4f7b59 !important;
+  font-size:11px !important;
+  font-weight:800 !important;
+  line-height:1 !important;
+  box-sizing:border-box !important;
+}
+#settingsSheet .wakeLockMiniBtns button.activeWake{
+  background:#166534 !important;
+  color:#ffffff !important;
+  border:2px solid #0f4f28 !important;
+  font-weight:900 !important;
+  box-shadow:0 2px 8px rgba(22,101,52,.28) !important;
+}
+#settingsSheet .wakeLockDescBox{
+  min-height:34px !important;
+  height:auto !important;
+  margin:0 !important;
+  padding:7px 9px !important;
+  border-radius:10px !important;
+  border:1px solid #b9cfbd !important;
+  background:#f3faf4 !important;
+  color:#166534 !important;
+  font-size:11px !important;
+  font-weight:800 !important;
+  line-height:1.35 !important;
+  display:flex !important;
+  align-items:center !important;
+  box-sizing:border-box !important;
+  word-break:keep-all !important;
 }
 </style>
