@@ -527,6 +527,10 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
 <style>
 /* Final settings layout standard:
    All right-side controls below font select align to the left/right edge of the font select box. */
+
+/* 화면 꺼짐 방지 버튼 */
+#wakeLockStatus{font-size:11px;color:#7b6a56;margin-top:4px;line-height:1.35;}
+#wakeLockOnBtn.activeWake,#wakeLockOffBtn.activeWake{background:#dec8aa!important;color:#3e2f1c!important;border-color:#c0a98a!important;font-weight:900!important;}
 #settingsSheet .settingControlRow {
   display:grid !important;
   grid-template-columns:80px 1fr !important;
@@ -2171,6 +2175,14 @@ body.scoreViewerOpen{
       <button onclick="setViewPreset('dawn', event)">새벽</button>
     </div>
   </div>
+  <div class="settingControlRow wakeLockControlRow">
+    <label>화면 꺼짐 방지</label>
+    <div class="settingBtns">
+      <button id="wakeLockOnBtn" onclick="setScreenKeepAwake(true, event)">ON</button>
+      <button id="wakeLockOffBtn" onclick="setScreenKeepAwake(false, event)">OFF</button>
+    </div>
+    <div id="wakeLockStatus">성경을 읽는 동안 화면이 꺼지지 않도록 유지합니다.</div>
+  </div>
   <div class="settingControlRow colorControlRow"><label>색상</label><div class="colorPair">
     <div class="colorMini"><label>글자색</label><input type="color" id="fontColor" onchange="setFontColor(this.value)"></div>
     <div class="colorMini"><label>배경색</label><input type="color" id="bgColor" onchange="setBgColor(this.value)"></div>
@@ -2301,7 +2313,7 @@ const books = BOOKS.slice();
 const DEFAULT_FONT_COLOR = '#2b241d';
 const DEFAULT_BG_COLOR = '#fffaf2';
 let settings = JSON.parse(localStorage.getItem('settingsV8')||'{}');
-settings = Object.assign({fontSize:20,lineHeight:1.75,verseGap:14,fontFamily:"'Nanum Myeongjo','Batang',serif",color:DEFAULT_FONT_COLOR,bgColor:DEFAULT_BG_COLOR}, settings);
+settings = Object.assign({fontSize:20,lineHeight:1.75,verseGap:14,fontFamily:"'Nanum Myeongjo','Batang',serif",color:DEFAULT_FONT_COLOR,bgColor:DEFAULT_BG_COLOR,keepAwake:true}, settings);
 if(!settings.bgColor) settings.bgColor = DEFAULT_BG_COLOR;
 let slots = JSON.parse(localStorage.getItem('slotsV8')||'null') || [
   {book:'창세기',chap:'1',version:'개역개정판'},
@@ -2361,6 +2373,8 @@ function chapterKeys(book=state.book) {
 async function init() {
   showLoader('초기 화면 준비 중...');
   applySettings();
+  updateWakeLockButtons();
+  requestCenScreenWakeLock();
   buildBookModal();
   buildVersionModal();
   renderTabs();
@@ -2701,7 +2715,74 @@ async function goPrevChapter(anim) {
   await loadChapter(anim);
 }
 
-function openSettings(e) { e.stopPropagation(); document.getElementById('settingsSheet').classList.add('show'); updateSettingValueBadges(); }
+
+/* 화면 꺼짐 방지: Screen Wake Lock API */
+let cenScreenWakeLock = null;
+
+function isCenWakeLockSupported() {
+  return !!(navigator && 'wakeLock' in navigator && window.isSecureContext);
+}
+
+function updateWakeLockButtons() {
+  const onBtn = document.getElementById('wakeLockOnBtn');
+  const offBtn = document.getElementById('wakeLockOffBtn');
+  const status = document.getElementById('wakeLockStatus');
+  const enabled = settings.keepAwake !== false;
+  if (onBtn) onBtn.classList.toggle('activeWake', enabled);
+  if (offBtn) offBtn.classList.toggle('activeWake', !enabled);
+  if (status) {
+    if (!isCenWakeLockSupported()) {
+      status.textContent = 'Chrome 또는 지원 브라우저에서 홈 화면에 추가해 실행하면 안정적으로 작동합니다.';
+    } else {
+      status.textContent = enabled ? 'ON: 성경 사용 중 화면이 꺼지지 않도록 유지합니다.' : 'OFF: 기기 기본 화면 꺼짐 시간을 따릅니다.';
+    }
+  }
+}
+
+async function requestCenScreenWakeLock() {
+  if (settings.keepAwake === false) { updateWakeLockButtons(); return; }
+  if (!isCenWakeLockSupported()) { updateWakeLockButtons(); return; }
+  if (document.visibilityState !== 'visible') return;
+  if (cenScreenWakeLock) return;
+  try {
+    cenScreenWakeLock = await navigator.wakeLock.request('screen');
+    cenScreenWakeLock.addEventListener('release', () => {
+      cenScreenWakeLock = null;
+      updateWakeLockButtons();
+    });
+  } catch (err) {
+    cenScreenWakeLock = null;
+  }
+  updateWakeLockButtons();
+}
+
+async function releaseCenScreenWakeLock() {
+  if (!cenScreenWakeLock) { updateWakeLockButtons(); return; }
+  try { await cenScreenWakeLock.release(); } catch (err) {}
+  cenScreenWakeLock = null;
+  updateWakeLockButtons();
+}
+
+function setScreenKeepAwake(on, e) {
+  if (e) e.stopPropagation();
+  settings.keepAwake = !!on;
+  saveSettings();
+  updateWakeLockButtons();
+  if (settings.keepAwake) {
+    requestCenScreenWakeLock();
+    if (typeof toast === 'function') toast('화면 꺼짐 방지 ON');
+  } else {
+    releaseCenScreenWakeLock();
+    if (typeof toast === 'function') toast('화면 꺼짐 방지 OFF');
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestCenScreenWakeLock();
+  else releaseCenScreenWakeLock();
+});
+
+function openSettings(e) { e.stopPropagation(); document.getElementById('settingsSheet').classList.add('show'); updateSettingValueBadges(); updateWakeLockButtons(); }
 function closeSettings() { document.getElementById('settingsSheet').classList.remove('show'); }
 function setFontFamily(v) { settings.fontFamily = v; applySettings(); }
 function adjustFont(n) { settings.fontSize = Math.max(13, Math.min(34, Number(settings.fontSize || 20) + n)); applySettings(); }
@@ -8797,3 +8878,22 @@ function resetMemoSearch(){
   setTimeout(install,1000);
 })();
 </script>
+
+<style>
+/* Wake Lock ON/OFF selected state - final override */
+#settingsSheet #wakeLockOnBtn,
+#settingsSheet #wakeLockOffBtn {
+  background:#fffaf2 !important;
+  color:#8a7356 !important;
+  border:1px solid #d8c7ae !important;
+  font-weight:700 !important;
+}
+#settingsSheet #wakeLockOnBtn.activeWake,
+#settingsSheet #wakeLockOffBtn.activeWake {
+  background:#6b4f2f !important;
+  color:#fff8ea !important;
+  border:2px solid #4b341c !important;
+  font-weight:900 !important;
+  box-shadow:0 2px 7px rgba(70,45,20,.28) !important;
+}
+</style>
