@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cen-bible-v100-wakelock-green-compact-1';
+const CACHE_NAME = 'cen-bible-v100-hymn-lyrics-search-1';
 const APP_SHELL = [
   "./",
   "./index.html",

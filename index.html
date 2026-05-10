@@ -141,6 +141,8 @@ button.icon { color:#5f5f5f; font-weight:800; background:transparent; border-col
 .planChapGrid button.read { background:#c6a178; color:white; }
 #hymnPanel input,#searchPanel input { width:100%; border:1px solid var(--line); border-radius:12px; padding:11px; font-size:16px; background:white; }
 .hymnItem,.searchItem { border-bottom:1px solid #eee0cc; padding:10px 3px; font-size:15px; line-height:1.45; }
+.hymnSearchInfo { margin:4px 0 8px; padding:8px 10px; border-radius:12px; background:#e8f1e6; color:#1f5a35; font-size:14px; }
+.hymnSearchInfo span { color:#55745f; font-size:12px; margin-left:4px; }
 mark { background:#ffe66a; color:#2b241d; }
 pre { white-space:pre-wrap; font-family:inherit; line-height:1.7; }
 /* v12 additions: dark mode / installation hint */
@@ -2024,7 +2026,7 @@ body.scoreViewerOpen{
 <div id="chapterModal" class="modal"><div class="panel"><div class="panelHead"><h3>장 선택</h3><button class="xbtn" onclick="closeModal('chapterModal')">×</button></div><div id="chapters" class="chapGrid"></div></div></div>
 <div id="versionModal" class="modal"><div class="panel"><div class="panelHead"><h3>번역본</h3><button class="xbtn" onclick="closeModal('versionModal')">×</button></div><div id="versions" class="versionList"></div></div></div>
 <div id="searchPanel" class="modal"><div class="panel"><div class="panelHead"><h3>성경 검색</h3><button class="xbtn" onclick="closeModal('searchPanel')">×</button></div><input id="searchInput" placeholder="검색어 입력"><div class="settingBtns"><button class="colored" onclick="searchBible()">검색</button><button onclick="clearBibleSearch()">검색초기화</button></div><div id="searchResult"></div></div></div>
-<div id="hymnPanel" class="modal"><div class="panel"><div class="panelHead"><h3>찬송가</h3><button class="xbtn" onclick="closeModal('hymnPanel')">×</button></div><input id="hymnInput" placeholder="번호 또는 제목 검색"><div class="settingBtns"><button class="colored" onclick="searchHymn()">검색</button></div><div id="hymnResult"></div></div></div>
+<div id="hymnPanel" class="modal"><div class="panel"><div class="panelHead"><h3>찬송가</h3><button class="xbtn" onclick="closeModal('hymnPanel')">×</button></div><input id="hymnInput" placeholder="번호·제목·가사 검색"><div class="settingBtns"><button class="colored" onclick="searchHymn()">검색</button></div><div id="hymnResult"></div></div></div>
 <div id="memoListPanel" class="modal"><div class="panel"><div class="panelHead"><h3>메모 전체보기</h3><button class="xbtn" onclick="closeModal('memoListPanel')">×</button></div><div class="memoToolbar"><input id="memoSearchInput" placeholder="메모 검색어"><button onclick="renderMemoList()">검색</button><button onclick="resetMemoSearch()">초기화</button></div><div id="memoListArea"></div></div></div>
 <div id="savedSearchPanel" class="modal"><div class="panel"><div class="panelHead"><h3>저장자료 통합검색</h3><button class="xbtn" onclick="closeModal('savedSearchPanel')">×</button></div>
   <div class="savedSearchToolbar">
@@ -2036,7 +2038,7 @@ body.scoreViewerOpen{
   <div id="savedSearchResult"></div>
 </div></div>
 <div id="textPanel" class="modal"><div class="panel"><div class="panelHead"><h3 id="textPanelTitle">본문</h3><button class="xbtn" onclick="closeModal('textPanel')">×</button></div><pre id="textPanelBody" class="fixedText"></pre></div></div>
-<div id="responsivePanel" class="modal"><div class="panel"><div class="panelHead"><h3 id="responsiveTitle">교독문</h3><button class="xbtn" onclick="closeModal('responsivePanel')">×</button></div><div id="responsiveListView"><div class="responsiveToolbar"><input id="responsiveSearchInput" placeholder="번호 또는 제목 검색" oninput="renderResponsiveList()"></div><div id="responsiveList"></div></div><div id="responsiveDetailView" style="display:none"><button onclick="backResponsiveList()" style="margin-bottom:10px">← 목록</button><div id="responsiveBody" class="responsiveBody"></div></div></div></div>
+<div id="responsivePanel" class="modal"><div class="panel"><div class="panelHead"><h3 id="responsiveTitle">교독문</h3><button class="xbtn" onclick="closeModal('responsivePanel')">×</button></div><div id="responsiveListView"><div class="responsiveToolbar"><input id="responsiveSearchInput" placeholder="번호·제목·가사 검색" oninput="renderResponsiveList()"></div><div id="responsiveList"></div></div><div id="responsiveDetailView" style="display:none"><button onclick="backResponsiveList()" style="margin-bottom:10px">← 목록</button><div id="responsiveBody" class="responsiveBody"></div></div></div></div>
 
 
 <div id="guidePanel" class="modal"><div class="panel"><div class="panelHead"><h3>사용가이드</h3><button class="xbtn" onclick="closeModal('guidePanel')">×</button></div>
@@ -2801,10 +2803,35 @@ async function openHymnFromSettings() {
   renderHymns(hymnData.slice(0)); 
 }
 
+function normalizeHymnText(s) {
+  return String(s || '').replace(/\s+/g, '').toLowerCase();
+}
+
 function searchHymn() { 
   const q=document.getElementById('hymnInput').value.trim(); 
-  const list = q ? hymnData.filter(h=>String(h.number).padStart(3,'0').includes(q)||String(h.number).includes(q)||h.title.includes(q)) : hymnData.slice(0);
+  const nq=normalizeHymnText(q);
+  const list = q ? hymnData.filter(h=>{
+    const no=String(h.number || '').padStart(3,'0');
+    const rawNo=String(h.number || '');
+    const title=String(h.title || '');
+    const lyrics=String(h.lyrics || '');
+    return no.includes(q) || rawNo.includes(q) || title.includes(q) || lyrics.includes(q) ||
+           normalizeHymnText(title).includes(nq) || normalizeHymnText(lyrics).includes(nq);
+  }) : hymnData.slice(0);
   renderHymns(list); 
+  const r=document.getElementById('hymnResult');
+  if(q && r){
+    const info=document.createElement('div');
+    info.className='hymnSearchInfo';
+    info.innerHTML=`<b>${list.length}</b>곡 검색됨 <span>번호·제목·가사 기준</span>`;
+    r.insertBefore(info, r.firstChild);
+    if(!list.length){
+      const empty=document.createElement('div');
+      empty.className='hymnItem';
+      empty.textContent='검색 결과가 없습니다.';
+      r.appendChild(empty);
+    }
+  }
 }
 
 function showHymnText(h){
