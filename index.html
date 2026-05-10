@@ -532,7 +532,7 @@ body, button, select, input, textarea { font-family:var(--uiFont); }
 
 /* 화면 꺼짐 방지 버튼 */
 #wakeLockStatus{font-size:11px;color:#7b6a56;margin-top:4px;line-height:1.35;}
-#wakeLockOnBtn.activeWake,#wakeLockOffBtn.activeWake{background:#dec8aa!important;color:#3e2f1c!important;border-color:#c0a98a!important;font-weight:900!important;}
+#wakeLockOnBtn.activeWake,#wakeLockOffBtn.activeWake{background:#00451f!important;color:#ffffff!important;border-color:#003316!important;font-weight:900!important;}
 #settingsSheet .settingControlRow {
   display:grid !important;
   grid-template-columns:80px 1fr !important;
@@ -2003,6 +2003,47 @@ body.scoreViewerOpen{
   border-radius:9px !important;
 }
 </style>
+<style>
+
+/* CEN Bible WakeLock ON/OFF selected button - brown restored */
+#wakeLockOn.active,
+#wakeLockOff.active,
+#wakeLockOn.selected,
+#wakeLockOff.selected,
+#wakelockOn.active,
+#wakelockOff.active,
+#wakelockOn.selected,
+#wakelockOff.selected,
+.wake-lock-on.active,
+.wake-lock-off.active,
+.wakelock-on.active,
+.wakelock-off.active,
+.wake-lock-toggle-btn.active,
+.wakelock-toggle-btn.active {
+  background: #5c4033 !important;
+  background-color: #5c4033 !important;
+  color: #ffffff !important;
+  border-color: #5c4033 !important;
+  font-weight: 800 !important;
+}
+
+#wakeLockOn:not(.active):not(.selected),
+#wakeLockOff:not(.active):not(.selected),
+#wakelockOn:not(.active):not(.selected),
+#wakelockOff:not(.active):not(.selected),
+.wake-lock-on:not(.active),
+.wake-lock-off:not(.active),
+.wakelock-on:not(.active),
+.wakelock-off:not(.active),
+.wake-lock-toggle-btn:not(.active),
+.wakelock-toggle-btn:not(.active) {
+  background: #f3eee8 !important;
+  background-color: #f3eee8 !important;
+  color: #4a3426 !important;
+  border-color: #cdb9a8 !important;
+}
+
+</style>
 </head>
 <body>
 <div id="installTip">홈 화면에 추가하면 주소창이 줄어들어 앱처럼 사용할 수 있습니다.<button onclick="hideInstallTip()">닫기</button></div>
@@ -2163,6 +2204,18 @@ body.scoreViewerOpen{
 <div id="settingsSheet">
   <div id="settingsDragHandle" class="settingsDragHandle">↕ 화면설정 창 이동</div>
   <div class="panelHead"><h3>화면설정</h3><button class="xbtn" onclick="closeSettings()">×</button></div>
+
+  <div class="settingControlRow wakeLockControlRow">
+    <label>화면 꺼짐 방지</label>
+    <div class="wakeLockInlineBox">
+      <div class="wakeLockMiniBtns">
+        <button id="wakeLockOnBtn" onclick="setScreenKeepAwake(true, event)">ON</button>
+        <button id="wakeLockOffBtn" onclick="setScreenKeepAwake(false, event)">OFF</button>
+      </div>
+      <div id="wakeLockStatus" class="wakeLockDescBox">ON: 성경 사용 중 화면이 꺼지지 않도록 유지합니다.</div>
+    </div>
+  </div>
+
   <div class="settingControlRow"><label>폰트</label><select id="fontSelect" onchange="setFontFamily(this.value)">
     <option value="'Nanum Myeongjo','Batang',serif">나눔명조</option>
     <option value="'Nanum Gothic','Malgun Gothic',sans-serif">나눔고딕</option>
@@ -2175,16 +2228,6 @@ body.scoreViewerOpen{
       <button onclick="setViewPreset('paper', event)">종이책</button>
       <button onclick="setViewPreset('large', event)">큰글자</button>
       <button onclick="setViewPreset('dawn', event)">새벽</button>
-    </div>
-  </div>
-  <div class="settingControlRow wakeLockControlRow">
-    <label>화면 꺼짐 방지</label>
-    <div class="wakeLockInlineBox">
-      <div class="wakeLockMiniBtns">
-        <button id="wakeLockOnBtn" onclick="setScreenKeepAwake(true, event)">ON</button>
-        <button id="wakeLockOffBtn" onclick="setScreenKeepAwake(false, event)">OFF</button>
-      </div>
-      <div id="wakeLockStatus" class="wakeLockDescBox">ON: 성경 사용 중 화면이 꺼지지 않도록 유지합니다.</div>
     </div>
   </div>
   <div class="settingControlRow colorControlRow"><label>색상</label><div class="colorPair">
@@ -7272,7 +7315,7 @@ function resetMemoSearch(){
 
 
 
-<!-- CEN Bible v1.4.5 final patch: one-line #0b5d1e back toast + reliable download/import backup -->
+<!-- CEN Bible v1.4.5 final patch: one-line #00451f back toast + reliable download/import backup -->
 <style id="cen-v145-final-style">
 #cenExitBox{
   width:calc(100vw - 48px) !important;
@@ -8730,6 +8773,92 @@ function resetMemoSearch(){
 </script>
 
 
+<script>
+
+(function(){
+  function applyWakeLockButtonSelectedBrown(){
+    var buttons = Array.prototype.slice.call(document.querySelectorAll('button'));
+    var onBtn = null, offBtn = null;
+
+    buttons.forEach(function(btn){
+      var txt = (btn.textContent || '').trim().toUpperCase();
+      var id = (btn.id || '').toLowerCase();
+      var cls = (btn.className || '').toString().toLowerCase();
+
+      if(txt === 'ON' || id.indexOf('wakelockon') >= 0 || id.indexOf('wake-lock-on') >= 0 || cls.indexOf('wake-lock-on') >= 0 || cls.indexOf('wakelock-on') >= 0) onBtn = btn;
+      if(txt === 'OFF' || id.indexOf('wakelockoff') >= 0 || id.indexOf('wake-lock-off') >= 0 || cls.indexOf('wake-lock-off') >= 0 || cls.indexOf('wakelock-off') >= 0) offBtn = btn;
+    });
+
+    if(!onBtn || !offBtn) return;
+
+    onBtn.classList.add('wake-lock-toggle-btn');
+    offBtn.classList.add('wake-lock-toggle-btn');
+
+    var onSelected =
+      onBtn.classList.contains('active') ||
+      onBtn.classList.contains('selected') ||
+      onBtn.getAttribute('aria-pressed') === 'true';
+
+    var offSelected =
+      offBtn.classList.contains('active') ||
+      offBtn.classList.contains('selected') ||
+      offBtn.getAttribute('aria-pressed') === 'true';
+
+    try {
+      var saved =
+        localStorage.getItem('cenWakeLockEnabled') ||
+        localStorage.getItem('wakeLockEnabled') ||
+        localStorage.getItem('screenWakeLock') ||
+        localStorage.getItem('preventScreenSleep');
+
+      if(saved !== null){
+        if(saved === 'true' || saved === 'on' || saved === '1') {
+          onSelected = true; offSelected = false;
+        }
+        if(saved === 'false' || saved === 'off' || saved === '0') {
+          onSelected = false; offSelected = true;
+        }
+      }
+    } catch(e) {}
+
+    [onBtn, offBtn].forEach(function(btn){
+      btn.style.setProperty('background', '#f3eee8', 'important');
+      btn.style.setProperty('background-color', '#f3eee8', 'important');
+      btn.style.setProperty('color', '#4a3426', 'important');
+      btn.style.setProperty('border-color', '#cdb9a8', 'important');
+    });
+
+    if(onSelected){
+      onBtn.style.setProperty('background', '#5c4033', 'important');
+      onBtn.style.setProperty('background-color', '#5c4033', 'important');
+      onBtn.style.setProperty('color', '#ffffff', 'important');
+      onBtn.style.setProperty('border-color', '#5c4033', 'important');
+    }
+
+    if(offSelected){
+      offBtn.style.setProperty('background', '#5c4033', 'important');
+      offBtn.style.setProperty('background-color', '#5c4033', 'important');
+      offBtn.style.setProperty('color', '#ffffff', 'important');
+      offBtn.style.setProperty('border-color', '#5c4033', 'important');
+    }
+  }
+
+  window.applyWakeLockButtonSelectedBrown = applyWakeLockButtonSelectedBrown;
+
+  document.addEventListener('DOMContentLoaded', function(){
+    applyWakeLockButtonSelectedBrown();
+    document.addEventListener('click', function(e){
+      var txt = (e.target && e.target.textContent || '').trim().toUpperCase();
+      if(txt === 'ON' || txt === 'OFF'){
+        setTimeout(applyWakeLockButtonSelectedBrown, 0);
+        setTimeout(applyWakeLockButtonSelectedBrown, 100);
+        setTimeout(applyWakeLockButtonSelectedBrown, 300);
+      }
+    }, true);
+  });
+})();
+
+</script>
 </body>
 </html>
 
@@ -8912,18 +9041,19 @@ function resetMemoSearch(){
 /* Wake Lock ON/OFF selected state - final override */
 #settingsSheet #wakeLockOnBtn,
 #settingsSheet #wakeLockOffBtn {
-  background:#fffaf2 !important;
-  color:#8a7356 !important;
-  border:1px solid #d8c7ae !important;
-  font-weight:700 !important;
+  background:#f4fbf5 !important;
+  color:#2f6f3c !important;
+  border:1px solid #b9cfbd !important;
+  font-weight:800 !important;
 }
 #settingsSheet #wakeLockOnBtn.activeWake,
 #settingsSheet #wakeLockOffBtn.activeWake {
-  background:#6b4f2f !important;
-  color:#fff8ea !important;
-  border:2px solid #4b341c !important;
+  background:#00451f !important;
+  background-color:#00451f !important;
+  color:#ffffff !important;
+  border:2px solid #003316 !important;
   font-weight:900 !important;
-  box-shadow:0 2px 7px rgba(70,45,20,.28) !important;
+  box-shadow:0 2px 8px rgba(0,69,31,.38) !important;
 }
 </style>
 
@@ -8964,11 +9094,12 @@ function resetMemoSearch(){
   box-sizing:border-box !important;
 }
 #settingsSheet .wakeLockMiniBtns button.activeWake{
-  background:#166534 !important;
+  background:#00451f !important;
+  background-color:#00451f !important;
   color:#ffffff !important;
-  border:2px solid #0f4f28 !important;
+  border:2px solid #003316 !important;
   font-weight:900 !important;
-  box-shadow:0 2px 8px rgba(22,101,52,.28) !important;
+  box-shadow:0 2px 8px rgba(0,69,31,.42) !important;
 }
 #settingsSheet .wakeLockDescBox{
   min-height:34px !important;
@@ -8995,8 +9126,92 @@ function resetMemoSearch(){
 .wake-lock-toggle button.active,
 button.active-wakelock,
 button[data-selected="true"]{
-    background:#0b5d1e !important;
+    background:#00451f !important;
     color:#ffffff !important;
-    border-color:#0b5d1e !important;
+    border-color:#00451f !important;
 }
 </style>
+
+<style>
+
+/* FINAL dark brown selected ON/OFF background */
+.wake-lock-toggle-btn.active,
+.wakelock-toggle-btn.active,
+#wakeLockOn.active,
+#wakeLockOff.active,
+#wakelockOn.active,
+#wakelockOff.active,
+button.active[data-wakelock],
+button.selected[data-wakelock] {
+    background: #4a2f25 !important;
+    background-color: #4a2f25 !important;
+    color: #ffffff !important;
+    border: 1px solid #4a2f25 !important;
+}
+
+.wake-lock-toggle-btn,
+.wakelock-toggle-btn,
+#wakeLockOn,
+#wakeLockOff,
+#wakelockOn,
+#wakelockOff {
+    background: #f4ede7;
+    color: #4a2f25;
+}
+
+</style>
+
+<script>
+
+(function(){
+  function applyBrownButtons(){
+    const buttons=[...document.querySelectorAll('button')];
+    let onBtn=null;
+    let offBtn=null;
+
+    buttons.forEach(btn=>{
+      const t=(btn.textContent||'').trim().toUpperCase();
+      if(t==='ON') onBtn=btn;
+      if(t==='OFF') offBtn=btn;
+    });
+
+    if(!onBtn || !offBtn) return;
+
+    const enabled =
+      localStorage.getItem('cenWakeLockEnabled') === 'true' ||
+      localStorage.getItem('wakeLockEnabled') === 'true';
+
+    [onBtn,offBtn].forEach(btn=>{
+      btn.style.background='#f4ede7';
+      btn.style.color='#4a2f25';
+      btn.style.border='1px solid #c9b3a3';
+    });
+
+    const target = enabled ? onBtn : offBtn;
+
+    target.style.background='#4a2f25';
+    target.style.backgroundColor='#4a2f25';
+    target.style.color='#fff';
+    target.style.border='1px solid #4a2f25';
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    applyBrownButtons();
+
+    document.addEventListener('click',(e)=>{
+      const txt=(e.target.textContent||'').trim().toUpperCase();
+      if(txt==='ON'){
+        localStorage.setItem('cenWakeLockEnabled','true');
+      }
+      if(txt==='OFF'){
+        localStorage.setItem('cenWakeLockEnabled','false');
+      }
+
+      if(txt==='ON' || txt==='OFF'){
+        setTimeout(applyBrownButtons,20);
+      }
+    },true);
+  });
+})();
+
+</script>
