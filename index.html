@@ -2666,8 +2666,36 @@ function updateSelectToolbar() { document.getElementById('selectCount').textCont
 function clearSelection(e) { if(e)e.stopPropagation(); selectedKeys.clear(); selectionMode=false; document.querySelectorAll('.verse.selected').forEach(x=>x.classList.remove('selected')); document.getElementById('selectToolbar').classList.remove('show'); }
 function copySelected(e) {
   e.stopPropagation();
-  const lines=[]; document.querySelectorAll('.verse').forEach(div=>{ if(selectedKeys.has(div.dataset.key)) lines.push(`${state.book} ${state.chap}:${div.dataset.v} ${div.dataset.text}`); });
-  copyText(lines.join('\n')); clearSelection();
+
+  const lines = [];
+  let firstLine = true;
+  let lastChap = null;
+
+  document.querySelectorAll('.verse').forEach(div => {
+    if(!selectedKeys.has(div.dataset.key)) return;
+
+    const parts = (div.dataset.key || '').split('|');
+    const book = parts[0] || state.book;
+    const chap = parts[1] || String(state.chap);
+    const verse = parts[2] || div.dataset.v;
+    const verseText = div.dataset.text || '';
+
+    let ref;
+    if(firstLine) {
+      ref = `${book} ${chap}:${verse}`;
+      firstLine = false;
+    } else if(chap !== lastChap) {
+      ref = `${chap}:${verse}`;
+    } else {
+      ref = `${verse}`;
+    }
+
+    lines.push(`${ref} ${verseText}`);
+    lastChap = chap;
+  });
+
+  copyText(lines.join('\n'));
+  clearSelection();
 }
 function addMemoToSelected(e) {
   e.stopPropagation(); if(!selectedKeys.size) return;
