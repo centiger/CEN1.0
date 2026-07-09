@@ -1,20 +1,21 @@
-const CACHE_NAME = 'cen-bible-v101-search-ranking-verse-jump-20260630';
+const CACHE_NAME = 'cen-bible-v102-to-v20-guide-20260709';
 const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  './',
+  './index.html',
+  './cen-bible-1.html',
+  './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
 ];
 
-self.addEventListener("install", event => {
+self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
   );
 });
 
-self.addEventListener("activate", event => {
+self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
       keys.map(key => key !== CACHE_NAME ? caches.delete(key) : null)
@@ -22,51 +23,40 @@ self.addEventListener("activate", event => {
   );
 });
 
-self.addEventListener("message", event => {
-  if (event.data && event.data.type === "SKIP_WAITING") {
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
 
-self.addEventListener("fetch", event => {
+self.addEventListener('fetch', event => {
   const req = event.request;
-  if (req.method !== "GET") return;
+  if (req.method !== 'GET') return;
 
-  const accept = req.headers.get("accept") || "";
-  const isHTML = req.mode === "navigate" || accept.includes("text/html");
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+
+  const accept = req.headers.get('accept') || '';
+  const isHTML = req.mode === 'navigate' || accept.includes('text/html');
 
   if (isHTML) {
     event.respondWith(
-      fetch(req, { cache: "no-store" })
+      fetch(req, { cache: 'no-store' })
         .then(res => {
           const copy = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put("./index.html", copy));
+          caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
           return res;
         })
-        .catch(() => caches.match("./index.html"))
+        .catch(() => caches.match(req).then(cached => cached || caches.match('./index.html')))
     );
     return;
   }
 
   event.respondWith(
-    caches.match(req).then(cached => {
-      return cached || fetch(req).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-        return res;
-      });
-    })
+    caches.match(req).then(cached => cached || fetch(req).then(res => {
+      const copy = res.clone();
+      caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
+      return res;
+    }))
   );
 });
-
-
-<style>
-.wake-lock-btn.active,
-.wake-lock-toggle button.active,
-button.active-wakelock,
-button[data-selected="true"]{
-    background:#0b5d1e !important;
-    color:#ffffff !important;
-    border-color:#0b5d1e !important;
-}
-</style>
